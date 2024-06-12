@@ -1,8 +1,25 @@
+> [!CAUTION]
+> FORK FROM [DeadSwimek](https://github.com/DeadSwimek/cs2-ctban)
+
+> [!NOTE]
+> * permission in config is now being used for cmds
+> * new config setting for own dbtable name
+> * color support in config tag
+> * changed database table structure + added player name, admin name & time added
+> * cleaned up code and fixed grammar stuff
+> * ban time is now in minutes instead of hours
+> * expired bans wont disappear from database
+>
+> css_ctunban alias for css_unctban
+> 
+> css_isctban alias for css_isctbanned
+> 
+> css_ctbancheck alias for css_isctbanned
+
+--------------------------------------------
+
 # TBans
-
-
 [CLICK TO ALTERNATIVE T BANS](https://github.com/DeadSwimek/cs2-tban)
-
 
 ##### Lists of my plugins
 > [VIP](https://github.com/DeadSwimek/cs2-vip), [VIP Premium](https://github.com/DeadSwimek/cs2-vip-premium), [SpecialRounds](https://github.com/DeadSwimek/cs2-specialrounds), [Countdown](https://github.com/DeadSwimek/cs2-countdown), [CTBans](https://github.com/DeadSwimek/cs2-ctban), [HideAdmin](https://github.com/DeadSwimek/cs2-hideadmin)
