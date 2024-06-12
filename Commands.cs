@@ -4,27 +4,33 @@ using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using Nexd.MySQL;
-using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CTBans;
 
 public partial class CTBans
 {
-    [ConsoleCommand("css_ctsessionban", "Ban player to CT")]
-    public void addsessionban(CCSPlayerController? player, CommandInfo info)
+    public void PlayerHasPermission(CCSPlayerController? player)
     {
-        if (!AdminManager.PlayerHasPermissions(player, "@css/ban"))
+        if (!AdminManager.PlayerHasPermissions(player, $"{Config.Permission}"))
         {
-            info.ReplyToCommand($" {Config.Prefix} You dosen't have permission to this command!");
+            player!.PrintToChat(ReplaceColors($" {Config.Prefix} You do not have permission to use this command!"));
             return;
         }
+    }
+
+    [ConsoleCommand("css_ctsessionban", "ctban a player")]
+    public void addsessionban(CCSPlayerController? player, CommandInfo info)
+    {
+        PlayerHasPermission(player);
+
         var Player = info.ArgByIndex(1);
         var Reason = info.GetArg(2);
 
         if (Reason == null)
         {
-            info.ReplyToCommand($" {Config.Prefix} Reason canno't be a number! Example : css_ctsessionban <PlayerName> 'REASON' | Example2 : css_ctsessionban Player Greafing");
+            info.ReplyToCommand($" {Config.Prefix} Reason can not be a number!");
+            info.ReplyToCommand($" {Config.Prefix} Example : css_ctsessionban <PlayerName> 'REASON'");
             return;
         }
 
@@ -35,6 +41,7 @@ public partial class CTBans
                 info.ReplyToCommand($" {Config.Prefix} Player Name '{Player}' has been banned!");
             }
         }
+
         info.ReplyToCommand($" {Config.Prefix} You successful ban player {Player}");
         foreach (var find_player in Utilities.GetPlayers())
         {
@@ -45,154 +52,203 @@ public partial class CTBans
                 banned[find_player.Index] = true;
                 reason[find_player.Index] = $"{Reason}";
                 session[find_player.Index] = true;
-                find_player.ChangeTeam(CounterStrikeSharp.API.Modules.Utils.CsTeam.Terrorist);
+                find_player.ChangeTeam(CsTeam.Terrorist);
             }
         }
+
     }
-    [ConsoleCommand("css_ctban", "Ban player to CT")]
+
+    [ConsoleCommand("css_ctban", "ctban a player")]
     public void addban(CCSPlayerController? player, CommandInfo info)
     {
-        if (!AdminManager.PlayerHasPermissions(player, "@css/ban"))
-        {
-            info.ReplyToCommand($" {Config.Prefix} You dosen't have permission to this command!");
-            return;
-        }
+        PlayerHasPermission(player);
+
         var SteamID = info.ArgByIndex(1);
-        var TimeHours = info.ArgByIndex(2);
+        var TimeMinutes = info.ArgByIndex(2);
         var Reason = info.GetArg(3);
         var Bannedby = "";
+
+        if (info.ArgString == "" || info.ArgString == null)
+        {
+            info.ReplyToCommand(ReplaceColors($" {Config.Prefix} No args found!"));
+            info.ReplyToCommand(ReplaceColors($" Example : css_ctban <PlayerName/SteamID> <Minutes> 'REASON'"));
+            return;
+        }
+
         if (player == null)
-        {
             Bannedby = "CONSOLE";
-        }
         else
-        {
             Bannedby = player.SteamID.ToString();
-        }
 
         foreach (var find_player in Utilities.GetPlayers())
         {
             if (find_player.PlayerName.ToString() == SteamID)
             {
-                info.ReplyToCommand($" {Config.Prefix} Player name has been found, and got a banned to join in CT!");
+                info.ReplyToCommand(ReplaceColors($" {Config.Prefix} Player found!"));
                 SteamID = find_player.SteamID.ToString();
+                var PlayerName = find_player.PlayerName;
             }
             else
             {
                 if (SteamID == null || !IsInt(SteamID))
                 {
-                    info.ReplyToCommand($" {Config.Prefix} Player name not found! Steamid is must be number! Example : css_ctban <PlayerName/SteamID> <Hours> 'REASON' | Example2 : css_ctban 7777777777777 24 Greafing");
+                    info.ReplyToCommand(ReplaceColors($" {Config.Prefix} Player not found, Steamid must be number!"));
+                    info.ReplyToCommand(ReplaceColors($" Example : css_ctban <PlayerName/SteamID> <Minutes> 'REASON'"));
                     return;
                 }
             }
         }
 
-        if (TimeHours == null || !IsInt(TimeHours))
+        if (TimeMinutes == null || !IsInt(TimeMinutes))
         {
-            info.ReplyToCommand($" {Config.Prefix} Time must be in hours! Example : css_ctban <PlayerName/SteamID> <Hours> 'REASON' | Example2 : css_ctban 7777777777777 24 Greafing");
+            info.ReplyToCommand(ReplaceColors($" {Config.Prefix} Time must be in hours!"));
+            info.ReplyToCommand(ReplaceColors($" Example : css_ctban <PlayerName/SteamID> <Minutes> 'REASON'"));
+
             return;
         }
+
         else if (Reason == null || IsInt(Reason))
         {
-            info.ReplyToCommand($" {Config.Prefix} Reason canno't be a number! Example : css_ctban <PlayerName/SteamID> <Hours> 'REASON' | Example2 : css_ctban 7777777777777 24 Greafing");
+            info.ReplyToCommand(ReplaceColors($" {Config.Prefix} Reason can not be a number!"));
+            info.ReplyToCommand(ReplaceColors($" Example : css_ctban <PlayerName/SteamID> <Minutes> 'REASON'"));
+            return;
         }
+
         else
         {
-
-
-            var TimeToUTC = DateTime.UtcNow.AddHours(Convert.ToInt32(TimeHours)).GetUnixEpoch();
+            var TimeToUTC = DateTime.UtcNow.AddMinutes(Convert.ToInt32(TimeMinutes)).GetUnixEpoch();
             var BanTime = 0;
-            if (TimeHours == "0")
-            {
-                BanTime = 0;
-            }
-            else
-            {
-                BanTime = DateTime.UtcNow.AddHours(Convert.ToInt32(TimeHours)).GetUnixEpoch();
-            }
 
+            if (TimeMinutes == "0")
+                BanTime = 0;
+
+            else
+                BanTime = DateTime.UtcNow.AddMinutes(Convert.ToInt32(TimeMinutes)).GetUnixEpoch();
 
             var timeRemaining = DateTimeOffset.FromUnixTimeSeconds(TimeToUTC) - DateTimeOffset.UtcNow;
             var timeRemainingFormatted = $"{timeRemaining.Days}d {timeRemaining.Hours:D2}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
 
             MySqlDb MySql = new MySqlDb(Config.DBHost, Config.DBUser, Config.DBPassword, Config.DBDatabase);
 
-            MySqlQueryResult result = MySql!.Table("deadswim_ctbans").Where(MySqlQueryCondition.New("ban_steamid", "=", SteamID)).Select();
+            MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.DBTable} WHERE steamid = '{player!.SteamID}' ORDER BY id DESC LIMIT 1");
+
             if (result.Rows == 0)
             {
                 MySqlQueryValue values = new MySqlQueryValue()
-                .Add("ban_steamid", $"{SteamID}")
+                .Add("steamid", $"{SteamID}")
+                .Add("name", $"{Utilities.GetPlayerFromSteamId(ulong.Parse(SteamID)).PlayerName}")
+                .Add("start", $"{DateTime.UtcNow.GetUnixEpoch()}")
                 .Add("end", $"{BanTime}")
                 .Add("reason", $"{Reason}")
-                .Add("banned_by", $"{Bannedby}");
-                MySql.Table("deadswim_ctbans").Insert(values);
+                .Add("admin_steamid", $"{Bannedby}")
+                .Add("admin_name", $"{Utilities.GetPlayerFromSteamId(ulong.Parse(Bannedby)).PlayerName}");
+                MySql.Table(Config.DBTable).Insert(values);
 
-                info.ReplyToCommand($" {Config.Prefix} You successful ban player with steamid {SteamID}");
+                info.ReplyToCommand(ReplaceColors($" {Config.Prefix} You banned the player {SteamID} from CT"));
                 foreach (var find_player in Utilities.GetPlayers())
                 {
                     if(find_player.SteamID.ToString() == SteamID)
                     {
-                        find_player.PrintToChat($" {Config.Prefix} You are banned from {ChatColors.LightBlue}CT{ChatColors.Default} by admin {ChatColors.Red}{player!.PlayerName}{ChatColors.Default} for reason: {ChatColors.Gold}{Reason} ");
-                        find_player.ChangeTeam(CounterStrikeSharp.API.Modules.Utils.CsTeam.Terrorist);
+                        Server.PrintToChatAll(ReplaceColors($" {Config.Prefix} {ChatColors.LightPurple}{find_player.PlayerName}{ChatColors.White} has been banned from {ChatColors.LightBlue}CT{ChatColors.Default} for {TimeMinutes} minutes, reason: {ChatColors.Grey}{Reason}"));
+                        find_player.ChangeTeam(CsTeam.Terrorist);
                     }
                 }
             }
             else
             {
-                info.ReplyToCommand($" {Config.Prefix} This SteamID it already is banned from admin!");
+                long currentTime = DateTime.UtcNow.GetUnixEpoch();
+                long endTime = Convert.ToInt64(result[0]["end"]);
+
+                if (currentTime > endTime)
+                {
+                    MySqlQueryValue values = new MySqlQueryValue()
+                    .Add("steamid", $"{SteamID}")
+                    .Add("name", $"{Utilities.GetPlayerFromSteamId(ulong.Parse(SteamID)).PlayerName}")
+                    .Add("start", $"{DateTime.UtcNow.GetUnixEpoch()}")
+                    .Add("end", $"{BanTime}")
+                    .Add("reason", $"{Reason}")
+                    .Add("admin_steamid", $"{Bannedby}")
+                    .Add("admin_name", $"{Utilities.GetPlayerFromSteamId(ulong.Parse(Bannedby)).PlayerName}");
+                    MySql.Table(Config.DBTable).Insert(values);
+
+                    info.ReplyToCommand(ReplaceColors($" {Config.Prefix} You banned the player {SteamID} from CT"));
+                    foreach (var find_player in Utilities.GetPlayers())
+                    {
+                        if (find_player.SteamID.ToString() == SteamID)
+                        {
+                            Server.PrintToChatAll(ReplaceColors($" {Config.Prefix} {ChatColors.LightPurple}{find_player.PlayerName}{ChatColors.White} has been banned from {ChatColors.LightBlue}CT{ChatColors.Default} for {TimeMinutes} minutes, reason: {ChatColors.Grey}{Reason}"));
+                            find_player.ChangeTeam(CsTeam.Terrorist);
+                        }
+                    }
+                }
+                else
+                {
+                    info.ReplyToCommand(ReplaceColors($" {Config.Prefix} This SteamID is already banned!"));
+                }
             }
         }
     }
-    [ConsoleCommand("css_unctban", "UNBan player to CT")]
+
+    [ConsoleCommand("css_unctban", "unctban a player")]
+    [ConsoleCommand("css_ctunban", "unctban a player")]
     public void UnbanCT(CCSPlayerController? player, CommandInfo info)
     {
-        if (!AdminManager.PlayerHasPermissions(player, "@css/ban"))
+        PlayerHasPermission(player);
+
+        var SteamID = info.ArgByIndex(1);
+
+        if (info.ArgString == "" || info.ArgString == null)
         {
-            info.ReplyToCommand($" {Config.Prefix} You dosen't have permission to this command!");
+            info.ReplyToCommand(ReplaceColors($" {Config.Prefix} No args found!"));
+            info.ReplyToCommand(ReplaceColors($" Example : css_unctban <SteamID>"));
             return;
         }
-        var SteamID = info.ArgByIndex(1);
+
         if (SteamID == null || !IsInt(SteamID))
         {
-            info.ReplyToCommand($" {Config.Prefix} Steamid is must be number! Example : css_unctban <SteamID> | Example2 : css_unctban 7777777777777");
+            info.ReplyToCommand(ReplaceColors($" {Config.Prefix} Steamid is must be number!"));
+            info.ReplyToCommand($" Example : css_unctban <SteamID>");
             return;
         }
 
         MySqlDb MySql = new MySqlDb(Config.DBHost, Config.DBUser, Config.DBPassword, Config.DBDatabase);
 
-        MySqlQueryResult result = MySql!.Table("deadswim_ctbans").Where(MySqlQueryCondition.New("ban_steamid", "=", SteamID)).Select();
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.DBTable} WHERE steamid = '{player!.SteamID}' ORDER BY id DESC LIMIT 1");
+
         if (result.Rows == 0)
-        {
-            info.ReplyToCommand($" {Config.Prefix} This steamid is not banned to connect in CT!");
-        }
+            info.ReplyToCommand(ReplaceColors($" {Config.Prefix} This steamid is not banned from CT!"));
+
         else
         {
-            MySql.Table("deadswim_ctbans").Where($"ban_steamid = '{SteamID}'").Delete();
-            info.ReplyToCommand($" {Config.Prefix} You successful unban a player to play in CT Team!");
+            MySql.ExecuteQuery($"DELETE FROM {Config.DBTable} WHERE steamid = '{player!.SteamID}' ORDER BY id DESC LIMIT 1");
+            info.ReplyToCommand(ReplaceColors($" {Config.Prefix} You unbanned player ({SteamID}) from CT!"));
         }
+
     }
-    [ConsoleCommand("css_isctbanned", "Info about CT Ban")]
+
+    [ConsoleCommand("css_isctbanned", "info about a ctban")]
+    [ConsoleCommand("css_isctban", "info about a ctban")]
+    [ConsoleCommand("css_ctbancheck", "info about a ctban")]
     public void InfobanCT(CCSPlayerController? player, CommandInfo info)
     {
-        if (!AdminManager.PlayerHasPermissions(player, "@css/ban"))
-        {
-            info.ReplyToCommand($" {Config.Prefix} You dosen't have permission to this command!");
-            return;
-        }
+        PlayerHasPermission(player);
+
         var SteamID = info.ArgByIndex(1);
+
         if (SteamID == null || !IsInt(SteamID))
         {
-            info.ReplyToCommand($" {Config.Prefix} Steamid is must be number! Example : css_isctbanned <SteamID> | Example2 : css_isctbanned 7777777777777");
+            info.ReplyToCommand($" {Config.Prefix} Steamid is must be number!");
+            info.ReplyToCommand($" Example : css_isctbanned <SteamID>");
             return;
         }
 
         MySqlDb MySql = new MySqlDb(Config.DBHost, Config.DBUser, Config.DBPassword, Config.DBDatabase);
 
-        MySqlQueryResult result = MySql!.Table("deadswim_ctbans").Where(MySqlQueryCondition.New("ban_steamid", "=", SteamID)).Select();
+        MySqlQueryResult result = MySql!.Table($"{Config.DBTable}").Where(MySqlQueryCondition.New("steamid", "=", SteamID)).Select();
+
         if (result.Rows == 0)
-        {
-            info.ReplyToCommand($" {Config.Prefix} This SteamID is not Banned to CT!");
-        }
+            info.ReplyToCommand($" {Config.Prefix} This SteamID is not banned from CT!");
+
         else
         {
             var time = result.Get<int>(0, "end");
@@ -204,9 +260,10 @@ public partial class CTBans
             $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
             player!.PrintToChat($" {ChatColors.Red}|-------------| {ChatColors.Default}Info about {SteamID} {ChatColors.Red}|-------------|");
             player!.PrintToChat($" {ChatColors.Default}SteamID {ChatColors.Red}{SteamID}{ChatColors.Default} is {ChatColors.Red}banned.");
-            player!.PrintToChat($" {ChatColors.Default}Reason of ban is {ChatColors.Red}{reason}{ChatColors.Default}.");
-            player!.PrintToChat($" {ChatColors.Default}Time of ban is {ChatColors.Red}{timeRemainingFormatted}{ChatColors.Default}.");
+            player!.PrintToChat($" {ChatColors.Default}Reason: {ChatColors.Red}{reason}{ChatColors.Default}.");
+            player!.PrintToChat($" {ChatColors.Default}Time of ban: {ChatColors.Red}{timeRemainingFormatted}");
             player!.PrintToChat($" {ChatColors.Red}|-------------| {ChatColors.Default}Info about {SteamID} {ChatColors.Red}|-------------|");
         }
     }
+
 }
