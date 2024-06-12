@@ -10,19 +10,21 @@ namespace CTBans;
 
 public partial class CTBans
 {
-    public void PlayerHasPermission(CCSPlayerController? player)
+    public bool PlayerHasPermission(CCSPlayerController? player)
     {
         if (!AdminManager.PlayerHasPermissions(player, $"{Config.Permission}"))
         {
             player!.PrintToChat(ReplaceColors($" {Config.Prefix} You do not have permission to use this command!"));
-            return;
+            return false;
         }
+        return true;
     }
 
     [ConsoleCommand("css_ctsessionban", "ctban a player")]
     public void addsessionban(CCSPlayerController? player, CommandInfo info)
     {
-        PlayerHasPermission(player);
+        if (!PlayerHasPermission(player))
+            return;
 
         var Player = info.ArgByIndex(1);
         var Reason = info.GetArg(2);
@@ -61,7 +63,8 @@ public partial class CTBans
     [ConsoleCommand("css_ctban", "ctban a player")]
     public void addban(CCSPlayerController? player, CommandInfo info)
     {
-        PlayerHasPermission(player);
+        if (!PlayerHasPermission(player))
+            return;
 
         var SteamID = info.ArgByIndex(1);
         var TimeMinutes = info.ArgByIndex(2);
@@ -193,7 +196,8 @@ public partial class CTBans
     [ConsoleCommand("css_ctunban", "unctban a player")]
     public void UnbanCT(CCSPlayerController? player, CommandInfo info)
     {
-        PlayerHasPermission(player);
+        if (!PlayerHasPermission(player))
+            return;
 
         var SteamID = info.ArgByIndex(1);
 
@@ -231,7 +235,8 @@ public partial class CTBans
     [ConsoleCommand("css_ctbancheck", "info about a ctban")]
     public void InfobanCT(CCSPlayerController? player, CommandInfo info)
     {
-        PlayerHasPermission(player);
+        if (!PlayerHasPermission(player))
+            return;
 
         var SteamID = info.ArgByIndex(1);
 
