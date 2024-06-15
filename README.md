@@ -1,5 +1,5 @@
 > [!CAUTION]
-> FORK FROM [DeadSwimek](https://github.com/DeadSwimek/cs2-ctban)
+> FORK FROM [DeadSwimek/cs2-ctban](https://github.com/DeadSwimek/cs2-ctban)
 
 > [!NOTE]
 > * permission in config is now being used for cmds
@@ -16,6 +16,7 @@
 > 
 > css_ctbancheck alias for css_isctbanned
 
+## old readme from main below
 --------------------------------------------
 
 # TBans
