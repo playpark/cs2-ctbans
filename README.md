@@ -9,12 +9,10 @@
 > * cleaned up code and fixed grammar stuff
 > * ban time is now in minutes instead of hours
 > * expired bans wont disappear from database
->
-> css_ctunban alias for css_unctban
-> 
-> css_isctban alias for css_isctbanned
-> 
-> css_ctbancheck alias for css_isctbanned
+> * added localizers 
+> * custom command triggers
+> * read commits for other changes
+
 
 ## old readme from main below
 --------------------------------------------

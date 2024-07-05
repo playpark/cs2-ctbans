@@ -1,0 +1,25 @@
+{
+  "prefix": "{lightblue}[ctbans]{white}",
+
+  "no_permission": "{lightred}You do not have permission to use this command",
+  "no_args": "{lightred}No args found",
+  "time_numbers": "{lightred}Time must be provided in numbers",
+
+  "not_found": "{lightred}Player not found",
+  "already_banned": "{lightred}This player is already banned",
+  "unbanned": "{white}You unbanned the player {0}",
+  "not_banned": "{white}This player is not banned",
+
+  "banned_announce": "{lightpurple}{0} {white}has been banned for {1} minutes, reason: {grey}{2}",
+  "banned_announce_perma": "{lightpurple}{0} {white}has been {lightred}permanently {white}banned! reason: {grey}{1}",
+
+  "hud_content_1": "<img src='https://icons.iconarchive.com/icons/paomedia/small-n-flat/48/sign-ban-icon.png'><br><br>",
+  "hud_content_2": "You are <font color='red'>banned</font> from <font color='aqua'>CT</font>!<br>",
+  "hud_content_3": "<font>time left:</font> <font color='silver'>{0}</font><br>",
+  "hud_content_4": "<font>reason:</font> <font color='silver'>{0}</font>",
+
+  "ban_info_1": "{lightblue}------------------ CTBan Info ------------------",
+  "ban_info_2": "{white}SteamID: {red}{0}{white} is {red}banned",
+  "ban_info_3": "{white}Time remaining: {red}{0}",
+  "ban_info_4": "{white}Reason: {red}{0}{white}"
+}
