@@ -12,7 +12,7 @@
 
 <br>
 
-> [!CAUTION]
+> [!IMPORTANT]
 > FORK FROM [DeadSwimek/cs2-ctban](https://github.com/DeadSwimek/cs2-ctban)
 
 <img src="https://github.com/user-attachments/assets/53e486cc-8da4-45ab-bc6e-eb38145aba36" height="200px"> <br>
