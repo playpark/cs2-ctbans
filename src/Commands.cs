@@ -1,37 +1,42 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
 using Nexd.MySQL;
 using CounterStrikeSharp.API.Modules.Utils;
 
-namespace CTBans;
-
-public static class GetUnixTime
+public partial class Plugin
 {
-    public static int GetUnixEpoch(this DateTime dateTime)
+    public void RegisterCommands()
     {
-        var unixTime = dateTime.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        return (int)unixTime.TotalSeconds;
+        foreach (var cmd in Config.Commands.CTBan.Split(','))
+            AddCommand($"css_{cmd}", "Toggle build mode", BanCT);
+
+        foreach (var cmd in Config.Commands.CTUnban.Split(','))
+            AddCommand($"css_{cmd}", "Toggle build mode", UnbanCT);
+
+        foreach (var cmd in Config.Commands.CTBanInfo.Split(','))
+            AddCommand($"css_{cmd}", "Toggle build mode", InfobanCT);
     }
-}
 
-public partial class CTBans
-{
-    public bool PermissionCheck(CCSPlayerController? player)
+    public void UnregisterCommands()
     {
-        if (!AdminManager.PlayerHasPermissions(player, $"{Config.Permission}"))
-        {
-            player?.PrintToChat($"{Localizer["prefix"]} {Localizer["no_permission"]}");
-            return true;
-        }
-        return false;
+        foreach (var cmd in Config.Commands.CTBan.Split(','))
+            RemoveCommand($"css_{cmd}", BanCT);
+
+        foreach (var cmd in Config.Commands.CTUnban.Split(','))
+            RemoveCommand($"css_{cmd}", UnbanCT);
+
+        foreach (var cmd in Config.Commands.CTBanInfo.Split(','))
+            RemoveCommand($"css_{cmd}", InfobanCT);
     }
 
     public void BanCT(CCSPlayerController? player, CommandInfo info)
     {
-        if (PermissionCheck(player))
+        if (!Utils.HasPermission(player))
+        {
+            player?.PrintToChat($"{Localizer["prefix"]} {Localizer["no_permission"]}");
             return;
+        }
 
         if (string.IsNullOrEmpty(info.ArgString))
         {
@@ -70,7 +75,7 @@ public partial class CTBans
             return;
         }
 
-        if (TimeMinutes is null or "" || !IsInt(TimeMinutes))
+        if (TimeMinutes is null or "" || !Utils.IsInt(TimeMinutes))
         {
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["time_numbers"]}");
             info.ReplyToCommand($"css_ctban <PlayerName/SteamID> <Minutes> 'REASON'");
@@ -97,8 +102,8 @@ public partial class CTBans
             adminName = player.PlayerName;
         }
 
-        MySqlDb MySql = new MySqlDb(Config.DBHost, Config.DBUser, Config.DBPassword, Config.DBDatabase);
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.DBTable} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
+        MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
 
         var bannedplayer = Utilities.GetPlayerFromSteamId(ulong.Parse(SteamID));
 
@@ -112,7 +117,7 @@ public partial class CTBans
             .Add("reason", $"{Reason}")
             .Add("admin_steamid", $"{adminSteamID}")
             .Add("admin_name", $"{adminName}");
-            MySql.Table(Config.DBTable).Insert(values);
+            MySql.Table(Config.Database.Table).Insert(values);
 
             bannedplayer!.ChangeTeam(CsTeam.Terrorist);
             Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", bannedplayer.PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", bannedplayer.PlayerName, TimeMinutes, Reason]}")}");
@@ -138,7 +143,7 @@ public partial class CTBans
                 .Add("reason", $"{Reason}")
                 .Add("admin_steamid", $"{adminSteamID}")
                 .Add("admin_name", $"{adminName}");
-                MySql.Table(Config.DBTable).Insert(values);
+                MySql.Table(Config.Database.Table).Insert(values);
 
                 Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", PlayerName, TimeMinutes, Reason]}")}");
                 bannedplayer!.ChangeTeam(CsTeam.Terrorist);
@@ -149,8 +154,11 @@ public partial class CTBans
 
     public void UnbanCT(CCSPlayerController? player, CommandInfo info)
     {
-        if (PermissionCheck(player))
+        if (!Utils.HasPermission(player))
+        {
+            player?.PrintToChat($"{Localizer["prefix"]} {Localizer["no_permission"]}");
             return;
+        }
 
         if (string.IsNullOrEmpty(info.ArgString))
         {
@@ -187,23 +195,20 @@ public partial class CTBans
             return;
         }
 
-        MySqlDb MySql = new MySqlDb(Config.DBHost, Config.DBUser, Config.DBPassword, Config.DBDatabase);
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.DBTable} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
+        MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
 
         if (result.Rows == 0)
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_banned"]}");
         else
         {
-            MySql.ExecuteQuery($"DELETE FROM {Config.DBTable} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
+            MySql.ExecuteQuery($"DELETE FROM {Config.Database.Table} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["unbanned", SteamID]}");
         }
     }
 
     public void InfobanCT(CCSPlayerController? player, CommandInfo info)
     {
-        if (PermissionCheck(player))
-            return;
-
         if (string.IsNullOrEmpty(info.ArgString))
         {
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["no_args"]}");
@@ -239,8 +244,8 @@ public partial class CTBans
             return;
         }
 
-        MySqlDb MySql = new MySqlDb(Config.DBHost, Config.DBUser, Config.DBPassword, Config.DBDatabase);
-        MySqlQueryResult result = MySql!.Table($"{Config.DBTable}").Where(MySqlQueryCondition.New("steamid", "=", SteamID)).Select();
+        MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
+        MySqlQueryResult result = MySql!.Table($"{Config.Database.Table}").Where(MySqlQueryCondition.New("steamid", "=", SteamID)).Select();
 
         if (result.Rows == 0)
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_banned"]}");
