@@ -251,12 +251,15 @@ public partial class Plugin
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_banned"]}");
         else
         {
-            var time = result.Get<int>(0, "end");
+            var unixtime = result.Get<int>(0, "end");
             string reason = result.Get<string>(0, "reason");
 
-            var timeRemaining = DateTimeOffset.FromUnixTimeSeconds(time) - DateTimeOffset.UtcNow;
+            var timeRemaining = DateTimeOffset.FromUnixTimeSeconds(unixtime) - DateTimeOffset.UtcNow;
             var timeRemainingFormatted = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
-            if (time == 0) timeRemainingFormatted = "permanently banned";
+
+            if (timeRemaining.Seconds < 0)
+                timeRemainingFormatted = "permanently banned";
+
             player!.PrintToChat(Localizer["ban_info_1"]);
             player!.PrintToChat(Localizer["ban_info_2", SteamID]);
             player!.PrintToChat(Localizer["ban_info_3", timeRemainingFormatted]);
