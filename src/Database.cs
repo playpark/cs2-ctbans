@@ -19,6 +19,13 @@ public class Database
     {
         try
         {
+            table = Plugin.Instance.Config.Database.Table;
+            host = Plugin.Instance.Config.Database.Host;
+            username = Plugin.Instance.Config.Database.Username;
+            password = Plugin.Instance.Config.Database.Password;
+            name = Plugin.Instance.Config.Database.Name;
+            port = Plugin.Instance.Config.Database.Port;
+
             MySqlDb MySql = ConnectionString();
 
             MySql.ExecuteNonQueryAsync(
@@ -33,13 +40,6 @@ public class Database
                     `admin_steamid` VARCHAR(32) NOT NULL, 
                     `admin_name` VARCHAR(32) NULL
                 );");
-
-            table = Plugin.Instance.Config.Database.Table;
-            host = Plugin.Instance.Config.Database.Host;
-            username = Plugin.Instance.Config.Database.Username;
-            password = Plugin.Instance.Config.Database.Password;
-            name = Plugin.Instance.Config.Database.Name;
-            port = Plugin.Instance.Config.Database.Port;
         }
         catch (Exception ex)
         {
