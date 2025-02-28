@@ -23,4 +23,5 @@ public class Config_Commands
     public string CTBan { get; set; } = "ctban,banct";
     public string CTUnban { get; set; } = "ctunban,unctban,unbanct";
     public string CTBanInfo { get; set; } = "ctbaninfo,infoctban,ctbancheck,checkctban,isctban,isctbanned";
+    public string AddCTBan { get; set; } = "addctban,offlinebanct";
 }
