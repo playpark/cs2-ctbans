@@ -91,9 +91,9 @@ public partial class Plugin
         if (Reason == "")
             Reason = "none";
 
-        int BanTime;
-        if (TimeMinutes == "0") BanTime = 0;
-        else BanTime = DateTime.UtcNow.AddMinutes(Convert.ToInt32(TimeMinutes)).GetUnixEpoch();
+        int BanDuration;
+        if (TimeMinutes == "0") BanDuration = 0; // Permanent ban
+        else BanDuration = Convert.ToInt32(TimeMinutes) * 60; // Convert minutes to seconds
 
         string adminSteamID;
         string adminName;
@@ -119,40 +119,91 @@ public partial class Plugin
             .Add("steamid", $"{SteamID}")
             .Add("name", $"{PlayerName}")
             .Add("start", $"{DateTime.UtcNow.GetUnixEpoch()}")
-            .Add("end", $"{BanTime}")
+            .Add("ban_duration", $"{BanDuration}")
+            .Add("time_served", "0")
             .Add("reason", $"{Reason}")
             .Add("admin_steamid", $"{adminSteamID}")
             .Add("admin_name", $"{adminName}");
             MySql.Table(Config.Database.Table).Insert(values);
 
-            bannedplayer!.ChangeTeam(CsTeam.Terrorist);
-            Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", bannedplayer.PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", bannedplayer.PlayerName, TimeMinutes, Reason]}")}");
+            if (bannedplayer != null && bannedplayer.IsValid)
+            {
+                bannedplayer.ChangeTeam(CsTeam.Terrorist);
+
+                // Initialize tracking for the banned player
+                var client = bannedplayer.Index;
+                banned[client] = true;
+                timeServed[client] = 0;
+                isPlayerAlive[client] = false;
+                aliveStartTime[client] = null;
+
+                // Format the remaining time for display
+                if (BanDuration == 0)
+                {
+                    remaining[client] = "permanent";
+                }
+                else
+                {
+                    TimeSpan timeRemaining = TimeSpan.FromSeconds(BanDuration);
+                    remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                }
+
+                reason[client] = Reason;
+            }
+
+            Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", PlayerName, TimeMinutes, Reason]}")}");
         }
         else
         {
-            long currentTime = DateTime.UtcNow.GetUnixEpoch();
-            long endTime = Convert.ToInt64(result[0]["end"]);
+            int timeServedValue = result.Get<int>(0, "time_served");
+            int currentBanDuration = result.Get<int>(0, "ban_duration");
 
-            if (endTime == 0)
+            if (currentBanDuration == 0)
             {
                 info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["already_banned"]}");
                 return;
             }
 
-            if (currentTime > endTime)
+            if (timeServedValue >= currentBanDuration)
             {
+                // Previous ban has been served, create a new ban
                 MySqlQueryValue values = new MySqlQueryValue()
                 .Add("steamid", $"{SteamID}")
                 .Add("name", $"{PlayerName}")
                 .Add("start", $"{DateTime.UtcNow.GetUnixEpoch()}")
-                .Add("end", $"{BanTime}")
+                .Add("ban_duration", $"{BanDuration}")
+                .Add("time_served", "0")
                 .Add("reason", $"{Reason}")
                 .Add("admin_steamid", $"{adminSteamID}")
                 .Add("admin_name", $"{adminName}");
                 MySql.Table(Config.Database.Table).Insert(values);
 
+                if (bannedplayer != null && bannedplayer.IsValid)
+                {
+                    bannedplayer.ChangeTeam(CsTeam.Terrorist);
+
+                    // Initialize tracking for the banned player
+                    var client = bannedplayer.Index;
+                    banned[client] = true;
+                    timeServed[client] = 0;
+                    isPlayerAlive[client] = false;
+                    aliveStartTime[client] = null;
+
+                    // Format the remaining time for display
+                    if (BanDuration == 0)
+                    {
+                        remaining[client] = "permanent";
+                    }
+                    else
+                    {
+                        TimeSpan timeRemaining = TimeSpan.FromSeconds(BanDuration);
+                        remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                    }
+
+                    reason[client] = Reason;
+                }
+
                 Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", PlayerName, TimeMinutes, Reason]}")}");
-                bannedplayer!.ChangeTeam(CsTeam.Terrorist);
             }
             else info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["already_banned"]}");
         }
@@ -257,19 +308,36 @@ public partial class Plugin
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_banned"]}");
         else
         {
-            var unixtime = result.Get<int>(0, "end");
+            int banDuration = result.Get<int>(0, "ban_duration");
+            int timeServed = result.Get<int>(0, "time_served");
             string reason = result.Get<string>(0, "reason");
 
-            var timeRemaining = DateTimeOffset.FromUnixTimeSeconds(unixtime) - DateTimeOffset.UtcNow;
-            var timeRemainingFormatted = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
-
-            if (timeRemaining.Seconds < 0)
+            string timeRemainingFormatted;
+            if (banDuration == 0)
+            {
                 timeRemainingFormatted = "permanently banned";
+            }
+            else
+            {
+                int secondsRemaining = banDuration - timeServed;
+                if (secondsRemaining <= 0)
+                {
+                    timeRemainingFormatted = "ban has been served";
+                    // Remove the ban from the database
+                    MySql.ExecuteNonQueryAsync($"DELETE FROM `{Config.Database.Table}` WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
+                }
+                else
+                {
+                    TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
+                    timeRemainingFormatted = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                }
+            }
 
             player!.PrintToChat(Localizer["ban_info_1"]);
             player!.PrintToChat(Localizer["ban_info_2", SteamID]);
             player!.PrintToChat(Localizer["ban_info_3", timeRemainingFormatted]);
             player!.PrintToChat(Localizer["ban_info_4", reason]);
+            player!.PrintToChat($"Time served: {TimeSpan.FromSeconds(timeServed).ToString(@"d\d\ hh\:mm\:ss")}");
             player!.PrintToChat(Localizer["ban_info_1"]);
         }
     }
@@ -321,9 +389,9 @@ public partial class Plugin
         if (Reason == "")
             Reason = "none";
 
-        int BanTime;
-        if (TimeMinutes == "0") BanTime = 0;
-        else BanTime = DateTime.UtcNow.AddMinutes(Convert.ToInt32(TimeMinutes)).GetUnixEpoch();
+        int BanDuration;
+        if (TimeMinutes == "0") BanDuration = 0; // Permanent ban
+        else BanDuration = Convert.ToInt32(TimeMinutes) * 60; // Convert minutes to seconds
 
         string adminSteamID;
         string adminName;
@@ -358,53 +426,98 @@ public partial class Plugin
             .Add("steamid", $"{SteamID}")
             .Add("name", $"{PlayerName}")
             .Add("start", $"{DateTime.UtcNow.GetUnixEpoch()}")
-            .Add("end", $"{BanTime}")
+            .Add("ban_duration", $"{BanDuration}")
+            .Add("time_served", "0")
             .Add("reason", $"{Reason}")
             .Add("admin_steamid", $"{adminSteamID}")
             .Add("admin_name", $"{adminName}");
             MySql.Table(Config.Database.Table).Insert(values);
 
-            // If player is online, move them to T team
+            // If player is online, move them to T team and initialize tracking
             if (bannedplayer != null && bannedplayer.IsValid)
             {
                 bannedplayer.ChangeTeam(CsTeam.Terrorist);
+
+                // Initialize tracking for the banned player
+                var client = bannedplayer.Index;
+                banned[client] = true;
+                timeServed[client] = 0;
+                isPlayerAlive[client] = false;
+                aliveStartTime[client] = null;
+
+                // Format the remaining time for display
+                if (BanDuration == 0)
+                {
+                    remaining[client] = "permanent";
+                }
+                else
+                {
+                    TimeSpan timeRemaining = TimeSpan.FromSeconds(BanDuration);
+                    remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                }
+
+                reason[client] = Reason;
+
                 Database.CheckIfIsBanned(bannedplayer);
             }
 
-            info.ReplyToCommand($"{Localizer["prefix"]} {(TimeMinutes == "0" ? $"Permanently banned {PlayerName} ({SteamID}) from CT side. Reason: {Reason}" : $"Banned {PlayerName} ({SteamID}) from CT side for {TimeMinutes} minutes. Reason: {Reason}")}");
+            info.ReplyToCommand($"{Localizer["prefix"]} {(TimeMinutes == "0" ? $"Permanently banned {PlayerName} ({SteamID}) from CT side. Reason: {Reason}" : $"Banned {PlayerName} ({SteamID}) from CT side for {TimeMinutes} minutes of alive time. Reason: {Reason}")}");
             Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", PlayerName, TimeMinutes, Reason]}")}");
         }
         else
         {
-            long currentTime = DateTime.UtcNow.GetUnixEpoch();
-            long endTime = Convert.ToInt64(result[0]["end"]);
+            int timeServedValue = result.Get<int>(0, "time_served");
+            int currentBanDuration = result.Get<int>(0, "ban_duration");
 
-            if (endTime == 0)
+            if (currentBanDuration == 0)
             {
                 info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["already_banned"]}");
                 return;
             }
 
-            if (currentTime > endTime)
+            if (timeServedValue >= currentBanDuration)
             {
+                // Previous ban has been served, create a new ban
                 MySqlQueryValue values = new MySqlQueryValue()
                 .Add("steamid", $"{SteamID}")
                 .Add("name", $"{PlayerName}")
                 .Add("start", $"{DateTime.UtcNow.GetUnixEpoch()}")
-                .Add("end", $"{BanTime}")
+                .Add("ban_duration", $"{BanDuration}")
+                .Add("time_served", "0")
                 .Add("reason", $"{Reason}")
                 .Add("admin_steamid", $"{adminSteamID}")
                 .Add("admin_name", $"{adminName}");
                 MySql.Table(Config.Database.Table).Insert(values);
 
-                // If player is online, move them to T team
+                // If player is online, move them to T team and initialize tracking
                 if (bannedplayer != null && bannedplayer.IsValid)
                 {
                     bannedplayer.ChangeTeam(CsTeam.Terrorist);
+
+                    // Initialize tracking for the banned player
+                    var client = bannedplayer.Index;
+                    banned[client] = true;
+                    timeServed[client] = 0;
+                    isPlayerAlive[client] = false;
+                    aliveStartTime[client] = null;
+
+                    // Format the remaining time for display
+                    if (BanDuration == 0)
+                    {
+                        remaining[client] = "permanent";
+                    }
+                    else
+                    {
+                        TimeSpan timeRemaining = TimeSpan.FromSeconds(BanDuration);
+                        remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                    }
+
+                    reason[client] = Reason;
+
                     Database.CheckIfIsBanned(bannedplayer);
                 }
 
-                info.ReplyToCommand($"{Localizer["prefix"]} {(TimeMinutes == "0" ? $"Permanently banned {PlayerName} ({SteamID}) from CT side. Reason: {Reason}" : $"Banned {PlayerName} ({SteamID}) from CT side for {TimeMinutes} minutes. Reason: {Reason}")}");
+                info.ReplyToCommand($"{Localizer["prefix"]} {(TimeMinutes == "0" ? $"Permanently banned {PlayerName} ({SteamID}) from CT side. Reason: {Reason}" : $"Banned {PlayerName} ({SteamID}) from CT side for {TimeMinutes} minutes of alive time. Reason: {Reason}")}");
                 Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", PlayerName, TimeMinutes, Reason]}")}");
             }
             else info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["already_banned"]}");

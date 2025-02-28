@@ -35,11 +35,32 @@ public class Database
                     `steamid` VARCHAR(32) NOT NULL, 
                     `name` VARCHAR(32) NULL, 
                     `start` BIGINT NOT NULL, 
-                    `end` BIGINT NOT NULL, 
+                    `ban_duration` INT NOT NULL, 
+                    `time_served` INT NOT NULL DEFAULT 0, 
                     `reason` VARCHAR(32) NOT NULL, 
                     `admin_steamid` VARCHAR(32) NOT NULL, 
                     `admin_name` VARCHAR(32) NULL
                 );");
+
+            // Check if we need to migrate existing data
+            MySqlQueryResult columnCheck = MySql.ExecuteQuery($"SHOW COLUMNS FROM `{table}` LIKE 'end'");
+            if (columnCheck.Rows > 0)
+            {
+                // The old 'end' column exists, we need to migrate
+                Utils.WriteColor($"CT BANS - *[MIGRATING DATABASE SCHEMA]*", ConsoleColor.Yellow);
+
+                // Add new columns if they don't exist
+                MySql.ExecuteNonQueryAsync($"ALTER TABLE `{table}` ADD COLUMN IF NOT EXISTS `ban_duration` INT NOT NULL DEFAULT 0");
+                MySql.ExecuteNonQueryAsync($"ALTER TABLE `{table}` ADD COLUMN IF NOT EXISTS `time_served` INT NOT NULL DEFAULT 0");
+
+                // Update ban_duration for existing records
+                MySql.ExecuteNonQueryAsync($"UPDATE `{table}` SET `ban_duration` = (`end` - `start`) WHERE `end` > 0");
+
+                // Drop the old column
+                MySql.ExecuteNonQueryAsync($"ALTER TABLE `{table}` DROP COLUMN `end`");
+
+                Utils.WriteColor($"CT BANS - *[DATABASE MIGRATION COMPLETE]*", ConsoleColor.Green);
+            }
         }
         catch (Exception ex)
         {
@@ -58,15 +79,26 @@ public class Database
         return false;
     }
 
-    public static int GetPlayerBanTime(CCSPlayerController? player)
+    public static int GetPlayerBanDuration(CCSPlayerController? player)
     {
         MySqlDb MySql = ConnectionString();
 
         MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' ORDER BY id DESC LIMIT 1");
         if (result.Rows == 1)
-            return result.Get<int>(0, "end");
+            return result.Get<int>(0, "ban_duration");
 
         return -1;
+    }
+
+    public static int GetPlayerTimeServed(CCSPlayerController? player)
+    {
+        MySqlDb MySql = ConnectionString();
+
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' ORDER BY id DESC LIMIT 1");
+        if (result.Rows == 1)
+            return result.Get<int>(0, "time_served");
+
+        return 0;
     }
 
     public static string GetPlayerBanReason(CCSPlayerController? player)
@@ -80,6 +112,15 @@ public class Database
         return "";
     }
 
+    public static void UpdatePlayerTimeServed(CCSPlayerController? player, int timeServed)
+    {
+        if (player == null || !player.IsValid)
+            return;
+
+        MySqlDb MySql = ConnectionString();
+        MySql.ExecuteNonQueryAsync($"UPDATE `{table}` SET `time_served` = {timeServed} WHERE steamid = '{player.SteamID}' ORDER BY id DESC LIMIT 1");
+    }
+
     public static void CheckIfIsBanned(CCSPlayerController? player)
     {
         if (player == null)
@@ -89,12 +130,10 @@ public class Database
 
         if (CheckBan(player) == true)
         {
-            var timeRemaining = DateTimeOffset.FromUnixTimeSeconds(GetPlayerBanTime(player)) - DateTimeOffset.UtcNow;
-            var timeCurrent = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var timeRemainingFormatted =
-            $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+            int banDuration = GetPlayerBanDuration(player);
+            int timeServed = GetPlayerTimeServed(player);
 
-            if (GetPlayerBanTime(player) == 0)
+            if (banDuration == 0) // Permanent ban
             {
                 Plugin.banned[client] = true;
                 Plugin.remaining[client] = $"permanent";
@@ -102,16 +141,26 @@ public class Database
                 return;
             }
 
-            if (GetPlayerBanTime(player) < timeCurrent)
+            if (timeServed >= banDuration)
             {
+                // Ban has been served
                 Plugin.banned[client] = false;
                 Plugin.remaining[client] = null;
                 Plugin.reason[client] = null;
+
+                // Remove the ban from the database
+                MySqlDb MySql = ConnectionString();
+                MySql.ExecuteNonQueryAsync($"DELETE FROM `{table}` WHERE steamid = '{player.SteamID}' ORDER BY id DESC LIMIT 1");
             }
             else
             {
+                // Still banned
+                int secondsRemaining = banDuration - timeServed;
+                TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
+                string timeRemainingFormatted = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+
                 Plugin.banned[client] = true;
-                Plugin.remaining[client] = $"{timeRemainingFormatted}";
+                Plugin.remaining[client] = timeRemainingFormatted;
                 Plugin.reason[client] = GetPlayerBanReason(player);
             }
         }

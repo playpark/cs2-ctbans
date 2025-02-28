@@ -4,7 +4,7 @@ public partial class Plugin : BasePlugin, IPluginConfig<Config>
 {
     public override string ModuleName => "CT Bans";
     public override string ModuleAuthor => "DeadSwim, continued by exkludera";
-    public override string ModuleVersion => "1.0.3";
+    public override string ModuleVersion => "1.0.4";
 
     public static Plugin Instance { get; set; } = new();
 
@@ -13,9 +13,18 @@ public partial class Plugin : BasePlugin, IPluginConfig<Config>
     public static readonly string?[] reason = new string?[64];
     public static readonly int?[] Showinfo = new int?[64];
 
+    // Track when players are alive
+    public static readonly bool?[] isPlayerAlive = new bool?[64];
+    public static readonly DateTime?[] aliveStartTime = new DateTime?[64];
+    public static readonly int?[] timeServed = new int?[64];
+
     public override void Load(bool hotReload)
     {
         RegisterEventHandler<EventPlayerConnectFull>(EventPlayerConnectFull);
+        RegisterEventHandler<EventPlayerSpawn>(EventPlayerSpawn);
+        RegisterEventHandler<EventPlayerDeath>(EventPlayerDeath);
+        RegisterEventHandler<EventRoundEnd>(EventRoundEnd);
+        RegisterEventHandler<EventPlayerDisconnect>(EventPlayerDisconnect);
         RegisterListener<Listeners.OnTick>(OnTick);
         AddCommandListener("jointeam", OnPlayerChangeTeam, HookMode.Pre);
 
@@ -28,6 +37,10 @@ public partial class Plugin : BasePlugin, IPluginConfig<Config>
     public override void Unload(bool hotReload)
     {
         DeregisterEventHandler<EventPlayerConnectFull>(EventPlayerConnectFull);
+        DeregisterEventHandler<EventPlayerSpawn>(EventPlayerSpawn);
+        DeregisterEventHandler<EventPlayerDeath>(EventPlayerDeath);
+        DeregisterEventHandler<EventRoundEnd>(EventRoundEnd);
+        DeregisterEventHandler<EventPlayerDisconnect>(EventPlayerDisconnect);
         RemoveListener<Listeners.OnTick>(OnTick);
         RemoveCommandListener("jointeam", OnPlayerChangeTeam, HookMode.Pre);
 
