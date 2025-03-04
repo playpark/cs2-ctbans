@@ -40,10 +40,14 @@ public partial class Plugin : ICTBansApi
 
         var client = player.Index;
 
+        // Refresh ban information before checking
+        Database.CheckIfIsBanned(player);
+
         if (banned[client] == true)
         {
-            Showinfo[client] = 1;
-
+            if (Showinfo[client] != 1)
+                Showinfo[client] = 1;
+            player.PrintToChat(Localizer["banned", remaining[client]!]);
             player.ExecuteClientCommand($"play {Config.TeamDenySound}");
 
             return true;

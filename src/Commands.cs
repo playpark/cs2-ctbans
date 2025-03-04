@@ -109,7 +109,7 @@ public partial class Plugin
         }
 
         MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' AND (status = 'ACTIVE' OR status = 'EXPIRED' OR status = 'UNBANNED') ORDER BY id DESC LIMIT 1");
 
         var bannedplayer = Utilities.GetPlayerFromSteamId(ulong.Parse(SteamID));
 
@@ -123,7 +123,8 @@ public partial class Plugin
             .Add("time_served", "0")
             .Add("reason", $"{Reason}")
             .Add("admin_steamid", $"{adminSteamID}")
-            .Add("admin_name", $"{adminName}");
+            .Add("admin_name", $"{adminName}")
+            .Add("status", "ACTIVE");
             MySql.Table(Config.Database.Table).Insert(values);
 
             if (bannedplayer != null && bannedplayer.IsValid)
@@ -175,7 +176,8 @@ public partial class Plugin
                 .Add("time_served", "0")
                 .Add("reason", $"{Reason}")
                 .Add("admin_steamid", $"{adminSteamID}")
-                .Add("admin_name", $"{adminName}");
+                .Add("admin_name", $"{adminName}")
+                .Add("status", "ACTIVE");
                 MySql.Table(Config.Database.Table).Insert(values);
 
                 if (bannedplayer != null && bannedplayer.IsValid)
@@ -253,13 +255,14 @@ public partial class Plugin
         }
 
         MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
 
         if (result.Rows == 0)
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_banned"]}");
         else
         {
-            MySql.ExecuteQuery($"DELETE FROM {Config.Database.Table} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
+            // Update the status to UNBANNED instead of deleting the record
+            MySql.ExecuteQuery($"UPDATE {Config.Database.Table} SET status = 'UNBANNED' WHERE steamid = '{SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["unbanned", SteamID]}");
         }
     }
@@ -302,7 +305,7 @@ public partial class Plugin
         }
 
         MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
-        MySqlQueryResult result = MySql!.Table($"{Config.Database.Table}").Where(MySqlQueryCondition.New("steamid", "=", SteamID)).Select();
+        MySqlQueryResult result = MySql!.Table($"{Config.Database.Table}").Where(MySqlQueryCondition.New("steamid", "=", SteamID)).Where(MySqlQueryCondition.New("status", "=", "ACTIVE")).Select();
 
         if (result.Rows == 0)
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_banned"]}");
@@ -323,8 +326,8 @@ public partial class Plugin
                 if (secondsRemaining <= 0)
                 {
                     timeRemainingFormatted = "ban has been served";
-                    // Remove the ban from the database
-                    MySql.ExecuteNonQueryAsync($"DELETE FROM `{Config.Database.Table}` WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
+                    // Update the ban status to EXPIRED instead of deleting
+                    MySql.ExecuteNonQueryAsync($"UPDATE `{Config.Database.Table}` SET `status` = 'EXPIRED' WHERE steamid = '{SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
                 }
                 else
                 {
@@ -407,7 +410,7 @@ public partial class Plugin
         }
 
         MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' AND (status = 'ACTIVE' OR status = 'EXPIRED' OR status = 'UNBANNED') ORDER BY id DESC LIMIT 1");
 
         // Check if player is online and get a reference to them if they are
         CCSPlayerController? bannedplayer = null;
@@ -430,7 +433,8 @@ public partial class Plugin
             .Add("time_served", "0")
             .Add("reason", $"{Reason}")
             .Add("admin_steamid", $"{adminSteamID}")
-            .Add("admin_name", $"{adminName}");
+            .Add("admin_name", $"{adminName}")
+            .Add("status", "ACTIVE");
             MySql.Table(Config.Database.Table).Insert(values);
 
             // If player is online, move them to T team and initialize tracking
@@ -486,7 +490,8 @@ public partial class Plugin
                 .Add("time_served", "0")
                 .Add("reason", $"{Reason}")
                 .Add("admin_steamid", $"{adminSteamID}")
-                .Add("admin_name", $"{adminName}");
+                .Add("admin_name", $"{adminName}")
+                .Add("status", "ACTIVE");
                 MySql.Table(Config.Database.Table).Insert(values);
 
                 // If player is online, move them to T team and initialize tracking

@@ -16,7 +16,11 @@ public partial class Plugin
         isPlayerAlive[client] = false;
         aliveStartTime[client] = null;
         timeServed[client] = 0;
+        banned[client] = false;
+        remaining[client] = null;
+        reason[client] = null;
 
+        // Check if player is banned
         if (Database.CheckBan(player) == true)
         {
             // Load the player's time served from the database
@@ -24,12 +28,6 @@ public partial class Plugin
 
             // Check if the player is still banned
             Database.CheckIfIsBanned(player);
-        }
-        else
-        {
-            banned[client] = false;
-            remaining[client] = null;
-            reason[client] = null;
         }
 
         return HookResult.Continue;
@@ -47,8 +45,22 @@ public partial class Plugin
         // Only track time for banned players
         if (banned[client] == true)
         {
+            // Make sure we're not already tracking this player (could happen with respawns)
+            if (isPlayerAlive[client] == true && aliveStartTime[client].HasValue)
+            {
+                // Update the time served before starting a new tracking session
+                UpdateTimeServed(player);
+            }
+
+            // Start tracking time for this player
             isPlayerAlive[client] = true;
             aliveStartTime[client] = DateTime.UtcNow;
+
+            // Make sure we have the latest time served value from the database
+            if (timeServed[client] == null || timeServed[client] == 0)
+            {
+                timeServed[client] = Database.GetPlayerTimeServed(player);
+            }
         }
 
         return HookResult.Continue;
@@ -115,14 +127,18 @@ public partial class Plugin
             TimeSpan aliveTime = DateTime.UtcNow - aliveStartTime[client]!.Value;
             int secondsAlive = (int)aliveTime.TotalSeconds;
 
-            // Update the time served
-            timeServed[client] += secondsAlive;
+            // Only update if there's meaningful time to add
+            if (secondsAlive > 0)
+            {
+                // Update the time served
+                timeServed[client] += secondsAlive;
 
-            // Update the database
-            Database.UpdatePlayerTimeServed(player, timeServed[client]!.Value);
+                // Update the database
+                Database.UpdatePlayerTimeServed(player, timeServed[client]!.Value);
 
-            // Check if the ban should be lifted
-            Database.CheckIfIsBanned(player);
+                // Check if the ban should be lifted
+                Database.CheckIfIsBanned(player);
+            }
 
             // Reset alive tracking
             isPlayerAlive[client] = false;
@@ -132,6 +148,53 @@ public partial class Plugin
 
     public void OnTick()
     {
+        // Check if it's time to update (every 10 seconds)
+        if (Server.CurrentTime % 10 < 0.1)
+        {
+            for (int i = 1; i < Server.MaxPlayers; i++)
+            {
+                var ent = NativeAPI.GetEntityFromIndex(i);
+                if (ent == 0)
+                    continue;
+
+                var client = new CCSPlayerController(ent);
+                if (client == null || !client.IsValid)
+                    continue;
+
+                // Update time served for alive players
+                if (isPlayerAlive[client.Index] == true && banned[client.Index] == true && aliveStartTime[client.Index].HasValue)
+                {
+                    // Calculate time spent alive since last update
+                    TimeSpan aliveTime = DateTime.UtcNow - aliveStartTime[client.Index]!.Value;
+                    int secondsAlive = (int)aliveTime.TotalSeconds;
+
+                    // Only update if there's meaningful time to add
+                    if (secondsAlive > 0)
+                    {
+                        // Update the time served
+                        timeServed[client.Index] += secondsAlive;
+
+                        // Update the database
+                        Database.UpdatePlayerTimeServed(client, timeServed[client.Index]!.Value);
+
+                        // Check if the ban should be lifted
+                        Database.CheckIfIsBanned(client);
+
+                        // Reset the start time to now to avoid double-counting
+                        aliveStartTime[client.Index] = DateTime.UtcNow;
+
+                        // If ban has been lifted, stop tracking
+                        if (banned[client.Index] != true)
+                        {
+                            isPlayerAlive[client.Index] = false;
+                            aliveStartTime[client.Index] = null;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Handle showing info to players (separate from the time update logic)
         for (int i = 1; i < Server.MaxPlayers; i++)
         {
             var ent = NativeAPI.GetEntityFromIndex(i);
@@ -141,19 +204,6 @@ public partial class Plugin
             var client = new CCSPlayerController(ent);
             if (client == null || !client.IsValid)
                 continue;
-
-            // Update time served for alive players periodically (every 10 seconds)
-            if (Server.CurrentTime % 10 < 0.1 && isPlayerAlive[client.Index] == true && banned[client.Index] == true)
-            {
-                UpdateTimeServed(client);
-
-                // If still banned, restart tracking
-                if (banned[client.Index] == true)
-                {
-                    isPlayerAlive[client.Index] = true;
-                    aliveStartTime[client.Index] = DateTime.UtcNow;
-                }
-            }
 
             if (Showinfo[client.Index] == 1)
             {

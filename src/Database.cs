@@ -39,7 +39,8 @@ public class Database
                     `time_served` INT NOT NULL DEFAULT 0, 
                     `reason` VARCHAR(32) NOT NULL, 
                     `admin_steamid` VARCHAR(32) NOT NULL, 
-                    `admin_name` VARCHAR(32) NULL
+                    `admin_name` VARCHAR(32) NULL,
+                    `status` VARCHAR(10) NOT NULL DEFAULT 'ACTIVE'
                 );");
 
             // Check if we need to migrate existing data
@@ -61,6 +62,16 @@ public class Database
 
                 Utils.WriteColor($"CT BANS - *[DATABASE MIGRATION COMPLETE]*", ConsoleColor.Green);
             }
+
+            // Check if we need to add the status column
+            MySqlQueryResult statusColumnCheck = MySql.ExecuteQuery($"SHOW COLUMNS FROM `{table}` LIKE 'status'");
+            if (statusColumnCheck.Rows == 0)
+            {
+                // The status column doesn't exist, we need to add it
+                Utils.WriteColor($"CT BANS - *[ADDING STATUS COLUMN]*", ConsoleColor.Yellow);
+                MySql.ExecuteNonQueryAsync($"ALTER TABLE `{table}` ADD COLUMN `status` VARCHAR(10) NOT NULL DEFAULT 'ACTIVE'");
+                Utils.WriteColor($"CT BANS - *[STATUS COLUMN ADDED]*", ConsoleColor.Green);
+            }
         }
         catch (Exception ex)
         {
@@ -72,7 +83,7 @@ public class Database
     {
         MySqlDb MySql = ConnectionString();
 
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
         if (result.Rows == 1)
             return true;
 
@@ -83,7 +94,7 @@ public class Database
     {
         MySqlDb MySql = ConnectionString();
 
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
         if (result.Rows == 1)
             return result.Get<int>(0, "ban_duration");
 
@@ -94,7 +105,7 @@ public class Database
     {
         MySqlDb MySql = ConnectionString();
 
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
         if (result.Rows == 1)
             return result.Get<int>(0, "time_served");
 
@@ -105,7 +116,7 @@ public class Database
     {
         MySqlDb MySql = ConnectionString();
 
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
         if (result.Rows == 1)
             return $"{result.Get<string>(0, "reason")}";
 
@@ -148,9 +159,9 @@ public class Database
                 Plugin.remaining[client] = null;
                 Plugin.reason[client] = null;
 
-                // Remove the ban from the database
+                // Update the ban status to EXPIRED instead of deleting
                 MySqlDb MySql = ConnectionString();
-                MySql.ExecuteNonQueryAsync($"DELETE FROM `{table}` WHERE steamid = '{player.SteamID}' ORDER BY id DESC LIMIT 1");
+                MySql.ExecuteNonQueryAsync($"UPDATE `{table}` SET `status` = 'EXPIRED' WHERE steamid = '{player.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
             }
             else
             {
