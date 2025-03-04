@@ -40,8 +40,8 @@ public partial class Plugin : ICTBansApi
 
         var client = player.Index;
 
-        // Refresh ban information before checking
-        Database.CheckIfIsBanned(player);
+        // Periodic update
+        UpdateTimeServed(player, true);
 
         if (banned[client] == true)
         {
