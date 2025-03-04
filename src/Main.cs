@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Capabilities;
+using CounterStrikeSharp.API.Modules.Utils;
 using CTBans.Shared;
 
 public partial class Plugin : BasePlugin, IPluginConfig<Config>
@@ -19,9 +20,11 @@ public partial class Plugin : BasePlugin, IPluginConfig<Config>
     public static readonly bool?[] isPlayerAlive = new bool?[64];
     public static readonly DateTime?[] aliveStartTime = new DateTime?[64];
     public static readonly int?[] timeServed = new int?[64];
-
+    public static PluginCapability<ICTBansApi> CTBansCapability { get; } = new("ctbans:api");
     public override void Load(bool hotReload)
     {
+        Capabilities.RegisterPluginCapability(CTBansCapability, () => this);
+
         RegisterEventHandler<EventPlayerConnectFull>(EventPlayerConnectFull);
         RegisterEventHandler<EventPlayerSpawn>(EventPlayerSpawn);
         RegisterEventHandler<EventPlayerDeath>(EventPlayerDeath);
@@ -34,9 +37,6 @@ public partial class Plugin : BasePlugin, IPluginConfig<Config>
 
         Instance = this;
         Database.Load();
-        // Register the API capability
-        Capabilities.RegisterPluginCapability(new PluginCapability<ICTBansApi>("ctbans:api"), () => this);
-        Utils.WriteColor($"CT BANS - *[API REGISTERED]*", ConsoleColor.Green);
     }
 
     public override void Unload(bool hotReload)
