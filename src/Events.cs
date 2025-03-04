@@ -186,10 +186,14 @@ public partial class Plugin
 
         if (team_switch == 3)
         {
-            if (banned[client] == true)
+            if (IsPlayerCTBanned(player))
             {
                 Showinfo[client] = 1;
                 player.ExecuteClientCommand($"play {Config.TeamDenySound}");
+
+                // Use our API method to notify the player
+                CheckAndNotifyPlayerCTBan(player);
+
                 return HookResult.Stop;
             }
         }

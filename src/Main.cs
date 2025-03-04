@@ -1,4 +1,6 @@
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Capabilities;
+using CTBans.Shared;
 
 public partial class Plugin : BasePlugin, IPluginConfig<Config>
 {
@@ -32,6 +34,9 @@ public partial class Plugin : BasePlugin, IPluginConfig<Config>
 
         Instance = this;
         Database.Load();
+        // Register the API capability
+        Capabilities.RegisterPluginCapability(new PluginCapability<ICTBansApi>("ctbans:api"), () => this);
+        Utils.WriteColor($"CT BANS - *[API REGISTERED]*", ConsoleColor.Green);
     }
 
     public override void Unload(bool hotReload)
