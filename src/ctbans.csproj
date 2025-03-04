@@ -18,4 +18,9 @@
 		<EmbeddedResource Remove="Shared\**" />
 		<None Remove="Shared\**" />
 	</ItemGroup>
+	<ItemGroup>
+		<None Include="lang\**">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 </Project>
