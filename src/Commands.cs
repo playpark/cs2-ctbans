@@ -3,25 +3,26 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
 using Nexd.MySQL;
 using CounterStrikeSharp.API.Modules.Utils;
+using CounterStrikeSharp.API.Modules.Commands.Targeting;
 
 public partial class Plugin
 {
     public void RegisterCommands()
     {
         foreach (var cmd in Config.Commands.CTBan.Split(','))
-            AddCommand($"css_{cmd}", "Toggle build mode", BanCT);
+            AddCommand($"css_{cmd}", "Ban a player from CT side by name or SteamID64", BanCT);
 
         foreach (var cmd in Config.Commands.CTUnban.Split(','))
-            AddCommand($"css_{cmd}", "Toggle build mode", UnbanCT);
+            AddCommand($"css_{cmd}", "Unban a player from CT side by name or SteamID64", UnbanCT);
 
         foreach (var cmd in Config.Commands.CTBanInfo.Split(','))
-            AddCommand($"css_{cmd}", "Toggle build mode", InfobanCT);
+            AddCommand($"css_{cmd}", "Check a player's CT ban info by name or SteamID64", InfobanCT);
 
         foreach (var cmd in Config.Commands.AddCTBan.Split(','))
-            AddCommand($"css_{cmd}", "Ban a player from CT side by SteamID", AddCTBan);
+            AddCommand($"css_{cmd}", "Ban a player from CT side by name or SteamID64", AddCTBan);
 
-        // Add a command for players to check their own ban time
-        AddCommand("css_checkban", "Check your CT ban status and remaining time", CheckOwnBan);
+        // Add a command for players to check ban status
+        AddCommand("css_checkban", "Check CT ban status for yourself or another player by name or SteamID64", CheckOwnBan);
     }
 
     public void UnregisterCommands()
@@ -54,35 +55,20 @@ public partial class Plugin
             return;
         }
 
-        var SteamID = info.ArgByIndex(1);
-        var TimeMinutes = info.ArgByIndex(2);
-        var Reason = info.GetArg(3);
-        string PlayerName = SteamID;
-        bool playerFound = false;
-
-        foreach (var find_player in Utilities.GetPlayers())
+        var target = GetTarget(info);
+        if (target == null)
         {
-            if (find_player.PlayerName == SteamID)
-            {
-                PlayerName = find_player.PlayerName;
-                SteamID = find_player.SteamID.ToString();
-                playerFound = true;
-                break;
-            }
-            if (find_player.SteamID.ToString() == SteamID)
-            {
-                PlayerName = find_player.PlayerName;
-                playerFound = true;
-                break;
-            }
-        }
-
-        if (!playerFound)
-        {
-            info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_found"]}");
             info.ReplyToCommand($"css_ctban <PlayerName/SteamID> <Minutes> 'REASON'");
             return;
         }
+
+        // Get the first target (we only support banning one player at a time)
+        var targetPlayer = target.First();
+        string SteamID = targetPlayer.SteamID.ToString();
+        string PlayerName = targetPlayer.PlayerName;
+
+        var TimeMinutes = info.ArgByIndex(2);
+        var Reason = info.GetArg(3);
 
         if (TimeMinutes is null or "" || !Utils.IsInt(TimeMinutes))
         {
@@ -225,37 +211,18 @@ public partial class Plugin
         if (string.IsNullOrEmpty(info.ArgString))
         {
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["no_args"]}");
-            info.ReplyToCommand($"css_unctban <SteamID>");
+            info.ReplyToCommand($"css_unctban <PlayerName/SteamID64>");
             return;
         }
 
-        var SteamID = info.ArgByIndex(1);
-        string PlayerName;
-        bool playerFound = false;
-
-        foreach (var find_player in Utilities.GetPlayers())
+        var targetInfo = GetTargetOrSteamID64(info);
+        if (targetInfo == null)
         {
-            if (find_player.PlayerName == SteamID)
-            {
-                PlayerName = find_player.PlayerName;
-                SteamID = find_player.SteamID.ToString();
-                playerFound = true;
-                break;
-            }
-            if (find_player.SteamID.ToString() == SteamID)
-            {
-                PlayerName = find_player.PlayerName;
-                playerFound = true;
-                break;
-            }
-        }
-
-        if (!playerFound)
-        {
-            info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_found"]}");
-            info.ReplyToCommand($"css_unctban <PlayerName/SteamID>");
+            info.ReplyToCommand($"css_unctban <PlayerName/SteamID64>");
             return;
         }
+
+        string SteamID = targetInfo.SteamID;
 
         MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
         MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
@@ -275,37 +242,18 @@ public partial class Plugin
         if (string.IsNullOrEmpty(info.ArgString))
         {
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["no_args"]}");
-            info.ReplyToCommand($"css_ctbaninfo <SteamID>");
+            info.ReplyToCommand($"css_ctbaninfo <PlayerName/SteamID64>");
             return;
         }
 
-        var SteamID = info.ArgByIndex(1);
-        string PlayerName;
-        bool playerFound = false;
-
-        foreach (var find_player in Utilities.GetPlayers())
+        var targetInfo = GetTargetOrSteamID64(info);
+        if (targetInfo == null)
         {
-            if (find_player.PlayerName == SteamID)
-            {
-                PlayerName = find_player.PlayerName;
-                SteamID = find_player.SteamID.ToString();
-                playerFound = true;
-                break;
-            }
-            if (find_player.SteamID.ToString() == SteamID)
-            {
-                PlayerName = find_player.PlayerName;
-                playerFound = true;
-                break;
-            }
-        }
-
-        if (!playerFound)
-        {
-            info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_found"]}");
-            info.ReplyToCommand($"css_ctbaninfo <PlayerName/SteamID>");
+            info.ReplyToCommand($"css_ctbaninfo <PlayerName/SteamID64>");
             return;
         }
+
+        string SteamID = targetInfo.SteamID;
 
         MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
         MySqlQueryResult result = MySql!.Table($"{Config.Database.Table}").Where(MySqlQueryCondition.New("steamid", "=", SteamID)).Where(MySqlQueryCondition.New("status", "=", "ACTIVE")).Select();
@@ -341,6 +289,7 @@ public partial class Plugin
 
             player!.PrintToChat(Localizer["ban_info_1"]);
             player!.PrintToChat(Localizer["ban_info_2", SteamID]);
+            player!.PrintToChat($"Player: {targetInfo.PlayerName}");
             player!.PrintToChat(Localizer["ban_info_3", timeRemainingFormatted]);
             player!.PrintToChat(Localizer["ban_info_4", reason]);
             player!.PrintToChat($"Time served: {TimeSpan.FromSeconds(timeServed).ToString(@"d\d\ hh\:mm\:ss")}");
@@ -359,36 +308,28 @@ public partial class Plugin
         if (string.IsNullOrEmpty(info.ArgString))
         {
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["no_args"]}");
-            info.ReplyToCommand($"css_addctban <SteamID> <PlayerName> <Minutes> 'REASON'");
+            info.ReplyToCommand($"css_addctban <PlayerName/SteamID64> <Minutes> 'REASON'");
             return;
         }
 
-        var SteamID = info.ArgByIndex(1);
-        var PlayerName = info.ArgByIndex(2);
-        var TimeMinutes = info.ArgByIndex(3);
-        var Reason = info.GetArg(4);
-
-        // Validate SteamID format (basic validation)
-        if (string.IsNullOrEmpty(SteamID) || (!SteamID.StartsWith("STEAM_") && !SteamID.All(char.IsDigit)))
+        var targetInfo = GetTargetOrSteamID64(info);
+        if (targetInfo == null)
         {
-            info.ReplyToCommand($"{Localizer["prefix"]} Invalid SteamID format");
-            info.ReplyToCommand($"css_addctban <SteamID> <PlayerName> <Minutes> 'REASON'");
+            info.ReplyToCommand($"css_addctban <PlayerName/SteamID64> <Minutes> 'REASON'");
             return;
         }
 
-        // Validate player name
-        if (string.IsNullOrEmpty(PlayerName))
-        {
-            info.ReplyToCommand($"{Localizer["prefix"]} Player name cannot be empty");
-            info.ReplyToCommand($"css_addctban <SteamID> <PlayerName> <Minutes> 'REASON'");
-            return;
-        }
+        string SteamID = targetInfo.SteamID;
+        string PlayerName = targetInfo.PlayerName;
+
+        var TimeMinutes = info.ArgByIndex(2);
+        var Reason = info.GetArg(3);
 
         // Validate time
         if (TimeMinutes is null or "" || !Utils.IsInt(TimeMinutes))
         {
             info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["time_numbers"]}");
-            info.ReplyToCommand($"css_addctban <SteamID> <PlayerName> <Minutes> 'REASON'");
+            info.ReplyToCommand($"css_addctban <PlayerName/SteamID64> <Minutes> 'REASON'");
             return;
         }
 
@@ -408,23 +349,24 @@ public partial class Plugin
         }
         else
         {
-            adminSteamID = player.SteamID.ToString();
+            // Try to get admin's SteamID64
+            ulong steamID64;
+            if (TryGetSteamID64(player, out steamID64))
+            {
+                adminSteamID = steamID64.ToString();
+            }
+            else
+            {
+                adminSteamID = player.SteamID.ToString();
+            }
             adminName = player.PlayerName;
         }
 
         MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
         MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' AND (status = 'ACTIVE' OR status = 'EXPIRED' OR status = 'UNBANNED') ORDER BY id DESC LIMIT 1");
 
-        // Check if player is online and get a reference to them if they are
-        CCSPlayerController? bannedplayer = null;
-        foreach (var find_player in Utilities.GetPlayers())
-        {
-            if (find_player.SteamID.ToString() == SteamID)
-            {
-                bannedplayer = find_player;
-                break;
-            }
-        }
+        // Use the player from targetInfo if available
+        CCSPlayerController? bannedplayer = targetInfo.Player;
 
         if (result.Rows == 0)
         {
@@ -537,20 +479,262 @@ public partial class Plugin
         if (player == null || !player.IsValid)
             return;
 
-        var client = player.Index;
-
-        // Force a refresh of the ban status from the database
-        Database.CheckIfIsBanned(player);
-
-        if (banned[client] == true)
+        // If no arguments, check own ban
+        if (string.IsNullOrEmpty(info.ArgString))
         {
-            // Show the ban information to the player
-            Showinfo[client] = 1;
-            player.PrintToChat(Localizer["banned", remaining[client]!]);
+            var client = player.Index;
+
+            // Force a refresh of the ban status from the database
+            Database.CheckIfIsBanned(player);
+
+            if (banned[client] == true)
+            {
+                // Show the ban information to the player
+                Showinfo[client] = 1;
+                player.PrintToChat(Localizer["banned", remaining[client]!]);
+            }
+            else
+            {
+                player.PrintToChat(Localizer["not_banned"]);
+            }
+            return;
         }
+
+        // Check if player has permission to check other players' bans
+        if (!Utils.HasPermission(player))
+        {
+            player.PrintToChat($"{Localizer["prefix"]} {Localizer["no_permission"]}");
+            return;
+        }
+
+        var targetInfo = GetTargetOrSteamID64(info);
+        if (targetInfo == null)
+        {
+            player.PrintToChat($"css_checkban <PlayerName/SteamID64>");
+            return;
+        }
+
+        string SteamID = targetInfo.SteamID;
+
+        // Check if the player is online
+        if (targetInfo.IsOnline)
+        {
+            // If player is online, check their ban status
+            var targetClient = targetInfo.Player!.Index;
+            Database.CheckIfIsBanned(targetInfo.Player);
+
+            if (banned[targetClient] == true)
+            {
+                player.PrintToChat(Localizer["ban_info_1"]);
+                player.PrintToChat(Localizer["ban_info_2", SteamID]);
+                player.PrintToChat($"Player: {targetInfo.PlayerName}");
+                player.PrintToChat(Localizer["ban_info_3", remaining[targetClient]!]);
+                player.PrintToChat(Localizer["ban_info_4", reason[targetClient]!]);
+                player.PrintToChat($"Time served: {TimeSpan.FromSeconds(timeServed[targetClient] ?? 0):d\\d\\ hh\\:mm\\:ss}");
+                player.PrintToChat(Localizer["ban_info_1"]);
+            }
+            else
+            {
+                player.PrintToChat($"{Localizer["prefix"]} {targetInfo.PlayerName} {Localizer["not_banned"]}");
+            }
+            return;
+        }
+
+        // For offline players, query the database directly
+        MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
+        MySqlQueryResult result = MySql!.Table($"{Config.Database.Table}").Where(MySqlQueryCondition.New("steamid", "=", SteamID)).Where(MySqlQueryCondition.New("status", "=", "ACTIVE")).Select();
+
+        if (result.Rows == 0)
+            player.PrintToChat($"{Localizer["prefix"]} {Localizer["not_banned"]}");
         else
         {
-            player.PrintToChat(Localizer["not_banned"]);
+            int banDuration = result.Get<int>(0, "ban_duration");
+            int timeServed = result.Get<int>(0, "time_served");
+            string reason = result.Get<string>(0, "reason");
+            string playerName = result.Get<string>(0, "name");
+
+            string timeRemainingFormatted;
+            if (banDuration == 0)
+            {
+                timeRemainingFormatted = "permanently banned";
+            }
+            else
+            {
+                int secondsRemaining = banDuration - timeServed;
+                if (secondsRemaining <= 0)
+                {
+                    timeRemainingFormatted = "ban has been served";
+                    // Update the ban status to EXPIRED instead of deleting
+                    MySql.ExecuteNonQueryAsync($"UPDATE `{Config.Database.Table}` SET `status` = 'EXPIRED' WHERE steamid = '{SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
+                }
+                else
+                {
+                    TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
+                    timeRemainingFormatted = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                }
+            }
+
+            player.PrintToChat(Localizer["ban_info_1"]);
+            player.PrintToChat(Localizer["ban_info_2", SteamID]);
+            player.PrintToChat($"Player: {playerName}");
+            player.PrintToChat(Localizer["ban_info_3", timeRemainingFormatted]);
+            player.PrintToChat(Localizer["ban_info_4", reason]);
+            player.PrintToChat($"Time served: {TimeSpan.FromSeconds(timeServed).ToString(@"d\d\ hh\:mm\:ss")}");
+            player.PrintToChat(Localizer["ban_info_1"]);
         }
+    }
+
+    private TargetResult? GetTarget(CommandInfo command)
+    {
+        var matches = command.GetArgTargetResult(1);
+
+        if (!matches.Any())
+        {
+            command.ReplyToCommand($"{Localizer["prefix"]} {Localizer["not_found"]}");
+            return null;
+        }
+
+        if (command.GetArg(1).StartsWith('@'))
+            return matches;
+
+        if (matches.Count() == 1)
+            return matches;
+
+        command.ReplyToCommand($"{Localizer["prefix"]} Multiple targets found for \"{command.GetArg(1)}\".");
+        return null;
+    }
+
+    private class TargetInfo
+    {
+        public string SteamID { get; set; } = string.Empty;
+        public string PlayerName { get; set; } = string.Empty;
+        public CCSPlayerController? Player { get; set; } = null;
+        public bool IsOnline => Player != null && Player.IsValid;
+    }
+
+    private TargetInfo? GetTargetOrSteamID64(CommandInfo command)
+    {
+        string input = command.GetArg(1);
+
+        // Check if input is a potential SteamID64 (17 digits)
+        if (input.Length == 17 && input.All(char.IsDigit))
+        {
+            // Use SteamID64 directly without converting
+            string steamID64 = input;
+
+            // First check if player is online by converting their SteamID to SteamID64
+            foreach (var player in Utilities.GetPlayers())
+            {
+                if (player == null || !player.IsValid)
+                    continue;
+
+                // Convert player's SteamID to SteamID64 for comparison
+                ulong playerSteamID64;
+                if (TryGetSteamID64(player, out playerSteamID64) && playerSteamID64.ToString() == steamID64)
+                {
+                    return new TargetInfo
+                    {
+                        SteamID = steamID64,
+                        PlayerName = player.PlayerName,
+                        Player = player
+                    };
+                }
+            }
+
+            // If not online, check database for player name
+            MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
+            MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT name FROM {Config.Database.Table} WHERE steamid = '{steamID64}' ORDER BY id DESC LIMIT 1");
+
+            if (result.Rows > 0)
+            {
+                string playerName = result.Get<string>(0, "name");
+                return new TargetInfo
+                {
+                    SteamID = steamID64,
+                    PlayerName = playerName
+                };
+            }
+
+            // If not in database, return with just the SteamID64
+            return new TargetInfo
+            {
+                SteamID = steamID64,
+                PlayerName = "Unknown"
+            };
+        }
+
+        // Try to find target using the standard GetTarget method
+        var target = GetTarget(command);
+        if (target != null && target.Any())
+        {
+            var player = target.First();
+            if (player == null || !player.IsValid)
+                return null;
+
+            ulong steamID64;
+
+            // Try to get SteamID64 from player
+            if (TryGetSteamID64(player, out steamID64))
+            {
+                return new TargetInfo
+                {
+                    SteamID = steamID64.ToString(),
+                    PlayerName = player.PlayerName,
+                    Player = player
+                };
+            }
+            else
+            {
+                // Fallback to original SteamID if conversion fails
+                return new TargetInfo
+                {
+                    SteamID = player.SteamID.ToString(),
+                    PlayerName = player.PlayerName,
+                    Player = player
+                };
+            }
+        }
+
+        return null;
+    }
+
+    public bool TryGetSteamID64(CCSPlayerController player, out ulong steamID64)
+    {
+        try
+        {
+            if (player == null || !player.IsValid)
+            {
+                steamID64 = 0;
+                return false;
+            }
+
+            // Get the SteamID in STEAM_X:Y:Z format
+            string steamID = player.SteamID.ToString();
+
+            // Parse the components
+            string[] parts = steamID.Split(':');
+            if (parts.Length == 3 && parts[0].StartsWith("STEAM_"))
+            {
+                ulong y = ulong.Parse(parts[1]);
+                ulong z = ulong.Parse(parts[2]);
+
+                // Calculate SteamID64
+                steamID64 = 76561197960265728UL + (z * 2) + y;
+                return true;
+            }
+
+            // If already in SteamID64 format
+            if (ulong.TryParse(steamID, out steamID64) && steamID.Length == 17)
+            {
+                return true;
+            }
+        }
+        catch
+        {
+            // Conversion failed
+        }
+
+        steamID64 = 0;
+        return false;
     }
 }
