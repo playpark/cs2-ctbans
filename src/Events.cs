@@ -123,24 +123,44 @@ public partial class Plugin
         // Only update if player is alive and banned
         if (isPlayerAlive[client] == true && banned[client] == true && aliveStartTime[client].HasValue)
         {
-            // Calculate time spent alive
+            // Calculate time spent alive using timestamp difference
             TimeSpan aliveTime = DateTime.UtcNow - aliveStartTime[client]!.Value;
             int secondsAlive = (int)aliveTime.TotalSeconds;
 
             // Only update if there's meaningful time to add
             if (secondsAlive > 0)
             {
-                // Update the time served
-                timeServed[client] += secondsAlive;
+                // Get the latest time served from the database
+                int currentTimeServed = Database.GetPlayerTimeServed(player);
+
+                // Add the new time to the current time served
+                int newTimeServed = currentTimeServed + secondsAlive;
+
+                // Update local tracking
+                timeServed[client] = newTimeServed;
 
                 // Update the database
-                Database.UpdatePlayerTimeServed(player, timeServed[client]!.Value);
+                Database.UpdatePlayerTimeServed(player, newTimeServed);
 
                 // Check if the ban should be lifted
                 Database.CheckIfIsBanned(player);
+
+                // If still banned, update the remaining time display
+                if (banned[client] == true)
+                {
+                    // Recalculate remaining time
+                    int banDuration = Database.GetPlayerBanDuration(player);
+                    if (banDuration > 0) // Not a permanent ban
+                    {
+                        int secondsRemaining = banDuration - timeServed[client]!.Value;
+                        TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
+                        remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                    }
+                }
             }
 
-            // Reset alive tracking
+            // Reset alive tracking - only do this when player is no longer alive
+            // This is important for events like death, disconnect, etc.
             isPlayerAlive[client] = false;
             aliveStartTime[client] = null;
         }
@@ -164,30 +184,52 @@ public partial class Plugin
                 // Update time served for alive players
                 if (isPlayerAlive[client.Index] == true && banned[client.Index] == true && aliveStartTime[client.Index].HasValue)
                 {
-                    // Calculate time spent alive since last update
+                    // Calculate time spent alive since the original spawn timestamp
                     TimeSpan aliveTime = DateTime.UtcNow - aliveStartTime[client.Index]!.Value;
                     int secondsAlive = (int)aliveTime.TotalSeconds;
 
                     // Only update if there's meaningful time to add
                     if (secondsAlive > 0)
                     {
-                        // Update the time served
-                        timeServed[client.Index] += secondsAlive;
+                        // Store the current timestamp for accurate tracking
+                        DateTime currentTimestamp = DateTime.UtcNow;
+
+                        // Get the latest time served from the database
+                        int currentTimeServed = Database.GetPlayerTimeServed(client);
+
+                        // Add the new time to the current time served
+                        int newTimeServed = currentTimeServed + secondsAlive;
+
+                        // Update local tracking
+                        timeServed[client.Index] = newTimeServed;
 
                         // Update the database
-                        Database.UpdatePlayerTimeServed(client, timeServed[client.Index]!.Value);
+                        Database.UpdatePlayerTimeServed(client, newTimeServed);
 
                         // Check if the ban should be lifted
                         Database.CheckIfIsBanned(client);
 
-                        // Reset the start time to now to avoid double-counting
-                        aliveStartTime[client.Index] = DateTime.UtcNow;
+                        // Update the start time to now to avoid double-counting
+                        // This is crucial - we're resetting the timestamp after counting the time
+                        aliveStartTime[client.Index] = currentTimestamp;
 
                         // If ban has been lifted, stop tracking
                         if (banned[client.Index] != true)
                         {
                             isPlayerAlive[client.Index] = false;
                             aliveStartTime[client.Index] = null;
+                        }
+                        // If still banned, update the remaining time display
+                        else
+                        {
+                            // Recalculate remaining time
+                            int banDuration = Database.GetPlayerBanDuration(client);
+                            if (banDuration > 0) // Not a permanent ban
+                            {
+                                int secondsRemaining = banDuration - timeServed[client.Index]!.Value;
+                                TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
+                                remaining[client.Index] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                            }
                         }
                     }
                 }

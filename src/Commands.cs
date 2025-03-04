@@ -19,6 +19,9 @@ public partial class Plugin
 
         foreach (var cmd in Config.Commands.AddCTBan.Split(','))
             AddCommand($"css_{cmd}", "Ban a player from CT side by SteamID", AddCTBan);
+
+        // Add a command for players to check their own ban time
+        AddCommand("css_checkban", "Check your CT ban status and remaining time", CheckOwnBan);
     }
 
     public void UnregisterCommands()
@@ -526,6 +529,28 @@ public partial class Plugin
                 Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", PlayerName, TimeMinutes, Reason]}")}");
             }
             else info.ReplyToCommand($"{Localizer["prefix"]} {Localizer["already_banned"]}");
+        }
+    }
+
+    public void CheckOwnBan(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player == null || !player.IsValid)
+            return;
+
+        var client = player.Index;
+
+        // Force a refresh of the ban status from the database
+        Database.CheckIfIsBanned(player);
+
+        if (banned[client] == true)
+        {
+            // Show the ban information to the player
+            Showinfo[client] = 1;
+            player.PrintToChat(Localizer["banned", remaining[client]!]);
+        }
+        else
+        {
+            player.PrintToChat(Localizer["not_banned"]);
         }
     }
 }
