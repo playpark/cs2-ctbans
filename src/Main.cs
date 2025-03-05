@@ -5,8 +5,8 @@ using CTBans.Shared;
 public partial class Plugin : BasePlugin, IPluginConfig<Config>
 {
     public override string ModuleName => "CT Bans";
-    public override string ModuleAuthor => "DeadSwim, continued by exkludera";
-    public override string ModuleVersion => "1.0.4";
+    public override string ModuleAuthor => "DeadSwim, continued by exkludera and maintained by dollan";
+    public override string ModuleVersion => "2.0.0";
 
     public static Plugin Instance { get; set; } = new();
 

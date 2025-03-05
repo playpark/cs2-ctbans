@@ -112,48 +112,93 @@ public class Database
         }
     }
 
-    public static bool CheckBan(CCSPlayerController? player)
+    public static async Task<bool> CheckBanAsync(CCSPlayerController? player)
     {
+        if (player == null || !player.IsValid)
+            return false;
+
         MySqlDb MySql = ConnectionString();
 
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = await MySql!.ExecuteQueryAsync($"SELECT * FROM {table} WHERE steamid = '{player.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
         if (result.Rows == 1)
             return true;
 
         return false;
     }
 
-    public static int GetPlayerBanDuration(CCSPlayerController? player)
+    public static bool CheckBan(CCSPlayerController? player)
     {
+        if (player == null || !player.IsValid)
+            return false;
+
+        // For EventPlayerConnectFull and other sync contexts, we need to run synchronously
+        return Task.Run(() => CheckBanAsync(player)).Result;
+    }
+
+    public static async Task<int> GetPlayerBanDurationAsync(CCSPlayerController? player)
+    {
+        if (player == null || !player.IsValid)
+            return -1;
+
         MySqlDb MySql = ConnectionString();
 
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = await MySql!.ExecuteQueryAsync($"SELECT * FROM {table} WHERE steamid = '{player.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
         if (result.Rows == 1)
             return result.Get<int>(0, "ban_duration");
 
         return -1;
     }
 
-    public static int GetPlayerTimeServed(CCSPlayerController? player)
+    public static int GetPlayerBanDuration(CCSPlayerController? player)
     {
+        if (player == null || !player.IsValid)
+            return -1;
+
+        return Task.Run(() => GetPlayerBanDurationAsync(player)).Result;
+    }
+
+    public static async Task<int> GetPlayerTimeServedAsync(CCSPlayerController? player)
+    {
+        if (player == null || !player.IsValid)
+            return 0;
+
         MySqlDb MySql = ConnectionString();
 
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = await MySql!.ExecuteQueryAsync($"SELECT * FROM {table} WHERE steamid = '{player.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
         if (result.Rows == 1)
             return result.Get<int>(0, "time_served");
 
         return 0;
     }
 
-    public static string GetPlayerBanReason(CCSPlayerController? player)
+    public static int GetPlayerTimeServed(CCSPlayerController? player)
     {
+        if (player == null || !player.IsValid)
+            return 0;
+
+        return Task.Run(() => GetPlayerTimeServedAsync(player)).Result;
+    }
+
+    public static async Task<string> GetPlayerBanReasonAsync(CCSPlayerController? player)
+    {
+        if (player == null || !player.IsValid)
+            return string.Empty;
+
         MySqlDb MySql = ConnectionString();
 
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {table} WHERE steamid = '{player!.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = await MySql!.ExecuteQueryAsync($"SELECT * FROM {table} WHERE steamid = '{player.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
         if (result.Rows == 1)
-            return $"{result.Get<string>(0, "reason")}";
+            return result.Get<string>(0, "reason");
 
-        return "";
+        return string.Empty;
+    }
+
+    public static string GetPlayerBanReason(CCSPlayerController? player)
+    {
+        if (player == null || !player.IsValid)
+            return string.Empty;
+
+        return Task.Run(() => GetPlayerBanReasonAsync(player)).Result;
     }
 
     public static async Task UpdatePlayerTimeServedAsync(CCSPlayerController? player, int timeServed)
@@ -178,16 +223,16 @@ public class Database
 
         var client = player.Index;
 
-        if (CheckBan(player) == true)
+        if (await CheckBanAsync(player) == true)
         {
-            int banDuration = GetPlayerBanDuration(player);
-            int timeServed = GetPlayerTimeServed(player);
+            int banDuration = await GetPlayerBanDurationAsync(player);
+            int timeServed = await GetPlayerTimeServedAsync(player);
 
             if (banDuration == 0) // Permanent ban
             {
                 Plugin.banned[client] = true;
                 Plugin.remaining[client] = $"permanent";
-                Plugin.reason[client] = GetPlayerBanReason(player);
+                Plugin.reason[client] = await GetPlayerBanReasonAsync(player);
                 return;
             }
 
@@ -210,7 +255,7 @@ public class Database
 
                 Plugin.banned[client] = true;
                 Plugin.remaining[client] = timeRemainingFormatted;
-                Plugin.reason[client] = GetPlayerBanReason(player);
+                Plugin.reason[client] = await GetPlayerBanReasonAsync(player);
             }
         }
         else
