@@ -1,5 +1,5 @@
 {
-  "prefix": "{lightblue}[ctbans]{white}",
+  "prefix": "{lightblue}[CTBans]{white}",
   "no_permission": "{lightred}You do not have permission to use this command",
   "no_args": "{lightred}No args found",
   "time_numbers": "{lightred}Time must be provided in numbers",
