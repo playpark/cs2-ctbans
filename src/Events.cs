@@ -255,29 +255,26 @@ public partial class Plugin
                 // Call UpdateTimeServed with periodicUpdate=true to update time for this player
                 UpdateTimeServed(client, true);
             }
+        }
+        for (int i = 1; i < Server.MaxPlayers; i++)
+        {
+            var ent = NativeAPI.GetEntityFromIndex(i);
+            if (ent == 0)
+                continue;
 
-            // Handle showing info to players (separate from the time update logic)
-            for (int i = 1; i < Server.MaxPlayers; i++)
+            var client = new CCSPlayerController(ent);
+            if (client == null || !client.IsValid)
+                continue;
+
+            if (Showinfo[client.Index] == 1)
             {
-                var ent = NativeAPI.GetEntityFromIndex(i);
-                if (ent == 0)
-                    continue;
-
-                var client = new CCSPlayerController(ent);
-                if (client == null || !client.IsValid)
-                    continue;
-
-                if (Showinfo[client.Index] == 1)
-                {
-                    client.PrintToCenterHtml
-                    (
-                        Localizer["hud_content_1"] +
-                        Localizer["hud_content_2"] +
-                        Localizer["hud_content_3", remaining[client.Index]!] +
-                        Localizer["hud_content_4", reason[client.Index]!]
-                    );
-                    AddTimer(10.0f, () => { Showinfo[client.Index] = null; });
-                }
+                client.PrintToCenterHtml
+                (
+                    Localizer["hud_content_1"] +
+                    Localizer["hud_content_2"] +
+                    Localizer["hud_content_3", remaining[client.Index]!] +
+                    Localizer["hud_content_4", reason[client.Index]!]
+                );
             }
         }
     }
@@ -298,7 +295,7 @@ public partial class Plugin
         {
             if (IsPlayerCTBanned(player))
             {
-                Showinfo[client] = 1;
+                ShowInfo(player);
                 player.ExecuteClientCommand($"play {Config.TeamDenySound}");
 
                 // Use our API method to notify the player
@@ -309,5 +306,17 @@ public partial class Plugin
         }
 
         return HookResult.Continue;
+    }
+
+    public void ShowInfo(CCSPlayerController player)
+    {
+        if (player == null || !player.IsValid)
+            return;
+
+        if (Showinfo[player.Index] == 1)
+            return;
+
+        Showinfo[player.Index] = 1;
+        AddTimer(10.0f, () => { Showinfo[player.Index] = null; });
     }
 }

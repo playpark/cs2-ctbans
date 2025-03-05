@@ -98,7 +98,7 @@ public partial class Plugin
         }
 
         MySqlDb MySql = new MySqlDb(Config.Database.Host, Config.Database.Username, Config.Database.Password, Config.Database.Name);
-        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' AND (status = 'ACTIVE' OR status = 'EXPIRED' OR status = 'UNBANNED') ORDER BY id DESC LIMIT 1");
+        MySqlQueryResult result = MySql!.ExecuteQuery($"SELECT * FROM {Config.Database.Table} WHERE steamid = '{SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
 
         var bannedplayer = Utilities.GetPlayerFromSteamId(ulong.Parse(SteamID));
 
@@ -489,7 +489,7 @@ public partial class Plugin
             if (banned[client] == true)
             {
                 // Show the ban information to the player
-                Showinfo[client] = 1;
+                ShowInfo(player);
                 player.PrintToChat(Localizer["banned", remaining[client]!]);
             }
             else

@@ -45,8 +45,7 @@ public partial class Plugin : ICTBansApi
 
         if (banned[client] == true)
         {
-            if (Showinfo[client] != 1)
-                Showinfo[client] = 1;
+            ShowInfo(player);
             player.PrintToChat(Localizer["banned", remaining[client]!]);
             player.ExecuteClientCommand($"play {Config.TeamDenySound}");
 
