@@ -51,4 +51,12 @@ public static class Utils
     {
         return string.IsNullOrEmpty(Plugin.Instance.Config.Commands.Permission) || AdminManager.PlayerHasPermissions(player, Plugin.Instance.Config.Commands.Permission);
     }
+
+    public static void Debug(string message)
+    {
+        if (Plugin.Instance.Config.Debug)
+        {
+            WriteColor($"[CTBans] {message}", ConsoleColor.Yellow);
+        }
+    }
 }

@@ -53,14 +53,14 @@ public partial class Plugin
             if (isPlayerAlive[client] == true && aliveStartTime[client].HasValue)
             {
                 // Update the time served before starting a new tracking session
-                Console.WriteLine($"[CTBans] Player {player.PlayerName} respawned while already being tracked. Updating time served first.");
+                Utils.Debug($"Player {player.PlayerName} respawned while already being tracked. Updating time served first.");
                 UpdateTimeServed(player);
             }
 
             // Start tracking time for this player
             isPlayerAlive[client] = true;
             aliveStartTime[client] = DateTime.UtcNow;
-            Console.WriteLine($"[CTBans] Started tracking time for player {player.PlayerName} at {aliveStartTime[client]}");
+            Utils.Debug($"Started tracking time for player {player.PlayerName} at {aliveStartTime[client]}");
         }
 
         return HookResult.Continue;
@@ -78,7 +78,7 @@ public partial class Plugin
         if (player == null || !player.IsValid || player.IsBot || player.IsHLTV)
             return HookResult.Continue;
 
-        Console.WriteLine($"[CTBans] Player {player.PlayerName} died, updating time served.");
+        Utils.Debug($"Player {player.PlayerName} died, updating time served.");
 
         // Update time served when player dies
         UpdateTimeServed(player);
@@ -129,7 +129,7 @@ public partial class Plugin
         // Additional check to ensure player is still connected and not a bot
         if (player.IsBot || player.IsHLTV || !player.Connected.Equals(PlayerConnectedState.PlayerConnected))
         {
-            Console.WriteLine($"[CTBans] Skipping player {player.PlayerName} - not a valid player");
+            Utils.Debug($"Skipping player {player.PlayerName} - not a valid player");
             return;
         }
 
@@ -138,7 +138,7 @@ public partial class Plugin
         // Check if the player index is valid
         if (client < 0 || client >= Server.MaxPlayers)
         {
-            Console.WriteLine($"[CTBans] UpdateTimeServed: Invalid player index {client}");
+            Utils.Debug($"UpdateTimeServed: Invalid player index {client}");
             return;
         }
 
@@ -153,7 +153,7 @@ public partial class Plugin
 
                 // Debug output to track time calculations
                 string updateType = periodicUpdate ? "Periodic" : "Event";
-                Console.WriteLine($"[CTBans] {updateType} update for player {player.PlayerName}: Current alive time: {secondsAlive}s, Start time: {aliveStartTime[client]!.Value}");
+                Utils.Debug($"{updateType} update for player {player.PlayerName}: Current alive time: {secondsAlive}s, Start time: {aliveStartTime[client]!.Value}");
 
                 // Only update if there's meaningful time to add
                 if (secondsAlive > 0)
@@ -167,7 +167,7 @@ public partial class Plugin
                     // Add the new time to the current time served
                     int newTimeServed = currentTimeServed + secondsAlive;
 
-                    Console.WriteLine($"[CTBans] {updateType} update: Player {player.PlayerName}: Adding {secondsAlive}s to current time served ({currentTimeServed}s) = {newTimeServed}s");
+                    Utils.Debug($"{updateType} update: Player {player.PlayerName}: Adding {secondsAlive}s to current time served ({currentTimeServed}s) = {newTimeServed}s");
 
                     // Update local tracking
                     timeServed[client] = newTimeServed;
@@ -196,14 +196,14 @@ public partial class Plugin
                     {
                         // Update the start time to now to avoid double-counting
                         aliveStartTime[client] = currentTimestamp;
-                        Console.WriteLine($"[CTBans] Periodic update: Updated start time for player {player.PlayerName} to {currentTimestamp}");
+                        Utils.Debug($"Periodic update: Updated start time for player {player.PlayerName} to {currentTimestamp}");
                     }
                     else
                     {
                         // For non-periodic updates (death, disconnect, etc.), reset tracking
                         isPlayerAlive[client] = false;
                         aliveStartTime[client] = null;
-                        Console.WriteLine($"[CTBans] Event update: Reset tracking for player {player.PlayerName}");
+                        Utils.Debug($"Event update: Reset tracking for player {player.PlayerName}");
                     }
                 }
                 else if (!periodicUpdate)
@@ -211,12 +211,12 @@ public partial class Plugin
                     // For non-periodic updates with no time to add, still reset tracking
                     isPlayerAlive[client] = false;
                     aliveStartTime[client] = null;
-                    Console.WriteLine($"[CTBans] Event update: Reset tracking for player {player.PlayerName} (no time to add)");
+                    Utils.Debug($"Event update: Reset tracking for player {player.PlayerName} (no time to add)");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[CTBans] Error in UpdateTimeServed for player {player.PlayerName}: {ex.Message}");
+                Utils.Debug($"Error in UpdateTimeServed for player {player.PlayerName}: {ex.Message}");
                 // Reset tracking state to avoid getting stuck
                 isPlayerAlive[client] = false;
                 aliveStartTime[client] = null;
@@ -240,7 +240,7 @@ public partial class Plugin
             lastUpdateTime = currentTimeSeconds;
 
             // Add debug output to verify the timer is working
-            Console.WriteLine($"[CTBans] 10-second timer triggered at {Server.CurrentTime}, next update at {currentTimeSeconds + 10}");
+            Utils.Debug($"10-second timer triggered at {Server.CurrentTime}, next update at {currentTimeSeconds + 10}");
 
             // Process all players
             for (int i = 1; i < Server.MaxPlayers; i++)
