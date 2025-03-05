@@ -27,7 +27,7 @@ public partial class Plugin
             timeServed[client] = Database.GetPlayerTimeServed(player);
 
             // Check if the player is still banned
-            Database.CheckIfIsBanned(player);
+            _ = Database.CheckIfIsBannedAsync(player);
         }
 
         return HookResult.Continue;
@@ -173,10 +173,10 @@ public partial class Plugin
                     timeServed[client] = newTimeServed;
 
                     // Update the database
-                    Database.UpdatePlayerTimeServed(player, newTimeServed);
+                    _ = Database.UpdatePlayerTimeServedAsync(player, newTimeServed);
 
                     // Check if the ban should be lifted
-                    Database.CheckIfIsBanned(player);
+                    _ = Database.CheckIfIsBannedAsync(player);
 
                     // If still banned, update the remaining time display
                     if (banned[client] == true)
@@ -292,7 +292,7 @@ public partial class Plugin
         if (player == null || !player.IsValid)
             return HookResult.Continue;
 
-        Database.CheckIfIsBanned(player);
+        _ = Database.CheckIfIsBannedAsync(player);
 
         if (team_switch == 3)
         {

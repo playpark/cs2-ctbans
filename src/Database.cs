@@ -1,6 +1,7 @@
 ﻿using CounterStrikeSharp.API.Core;
 using Nexd.MySQL;
 using System;
+using System.Threading.Tasks;
 
 public class Database
 {
@@ -155,16 +156,22 @@ public class Database
         return "";
     }
 
-    public static void UpdatePlayerTimeServed(CCSPlayerController? player, int timeServed)
+    public static async Task UpdatePlayerTimeServedAsync(CCSPlayerController? player, int timeServed)
     {
         if (player == null || !player.IsValid)
             return;
 
         MySqlDb MySql = ConnectionString();
-        MySql.ExecuteNonQueryAsync($"UPDATE `{table}` SET `time_served` = {timeServed} WHERE steamid = '{player.SteamID}' ORDER BY id DESC LIMIT 1");
+        await MySql.ExecuteNonQueryAsync($"UPDATE `{table}` SET `time_served` = {timeServed} WHERE steamid = '{player.SteamID}' ORDER BY id DESC LIMIT 1");
     }
 
-    public static void CheckIfIsBanned(CCSPlayerController? player)
+    // Keep the old method for backward compatibility but make it call the async version
+    public static void UpdatePlayerTimeServed(CCSPlayerController? player, int timeServed)
+    {
+        Task.Run(() => UpdatePlayerTimeServedAsync(player, timeServed)).Wait();
+    }
+
+    public static async Task CheckIfIsBannedAsync(CCSPlayerController? player)
     {
         if (player == null)
             return;
@@ -193,7 +200,7 @@ public class Database
 
                 // Update the ban status to EXPIRED instead of deleting
                 MySqlDb MySql = ConnectionString();
-                MySql.ExecuteNonQueryAsync($"UPDATE `{table}` SET `status` = 'EXPIRED' WHERE steamid = '{player.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
+                await MySql.ExecuteNonQueryAsync($"UPDATE `{table}` SET `status` = 'EXPIRED' WHERE steamid = '{player.SteamID}' AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1");
             }
             else
             {
@@ -212,5 +219,11 @@ public class Database
             Plugin.remaining[client] = null;
             Plugin.reason[client] = null;
         }
+    }
+
+    // Keep the old method for backward compatibility but make it call the async version
+    public static void CheckIfIsBanned(CCSPlayerController? player)
+    {
+        Task.Run(() => CheckIfIsBannedAsync(player)).Wait();
     }
 }

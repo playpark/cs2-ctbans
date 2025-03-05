@@ -138,6 +138,8 @@ public partial class Plugin
                 }
 
                 reason[client] = Reason;
+
+                _ = Database.CheckIfIsBannedAsync(bannedplayer);
             }
 
             Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", PlayerName, TimeMinutes, Reason]}")}");
@@ -190,6 +192,8 @@ public partial class Plugin
                     }
 
                     reason[client] = Reason;
+
+                    _ = Database.CheckIfIsBannedAsync(bannedplayer);
                 }
 
                 Server.PrintToChatAll($" {Localizer["prefix"]} {(TimeMinutes == "0" ? $"{Localizer["banned_announce_perma", PlayerName, TimeMinutes, Reason]}" : $"{Localizer["banned_announce", PlayerName, TimeMinutes, Reason]}")}");
@@ -403,7 +407,7 @@ public partial class Plugin
 
                 reason[client] = Reason;
 
-                Database.CheckIfIsBanned(bannedplayer);
+                _ = Database.CheckIfIsBannedAsync(bannedplayer);
             }
 
             info.ReplyToCommand($"{Localizer["prefix"]} {(TimeMinutes == "0" ? $"Permanently banned {PlayerName} ({SteamID}) from CT side. Reason: {Reason}" : $"Banned {PlayerName} ({SteamID}) from CT side for {TimeMinutes} minutes of alive time. Reason: {Reason}")}");
@@ -459,7 +463,7 @@ public partial class Plugin
 
                     reason[client] = Reason;
 
-                    Database.CheckIfIsBanned(bannedplayer);
+                    _ = Database.CheckIfIsBannedAsync(bannedplayer);
                 }
 
                 info.ReplyToCommand($"{Localizer["prefix"]} {(TimeMinutes == "0" ? $"Permanently banned {PlayerName} ({SteamID}) from CT side. Reason: {Reason}" : $"Banned {PlayerName} ({SteamID}) from CT side for {TimeMinutes} minutes of alive time. Reason: {Reason}")}");
@@ -480,7 +484,7 @@ public partial class Plugin
             var client = player.Index;
 
             // Force a refresh of the ban status from the database
-            Database.CheckIfIsBanned(player);
+            _ = Database.CheckIfIsBannedAsync(player);
 
             if (banned[client] == true)
             {
@@ -516,7 +520,7 @@ public partial class Plugin
         {
             // If player is online, check their ban status
             var targetClient = targetInfo.Player!.Index;
-            Database.CheckIfIsBanned(targetInfo.Player);
+            _ = Database.CheckIfIsBannedAsync(targetInfo.Player);
 
             if (banned[targetClient] == true)
             {
