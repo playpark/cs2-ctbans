@@ -134,8 +134,7 @@ public partial class Plugin
                 }
                 else
                 {
-                    TimeSpan timeRemaining = TimeSpan.FromSeconds(BanDuration);
-                    remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                    remaining[client] = Database.FormatTimeRemainingFromSeconds(BanDuration);
                 }
 
                 reason[client] = Reason;
@@ -187,8 +186,7 @@ public partial class Plugin
                     }
                     else
                     {
-                        TimeSpan timeRemaining = TimeSpan.FromSeconds(BanDuration);
-                        remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                        remaining[client] = Database.FormatTimeRemainingFromSeconds(BanDuration);
                     }
 
                     reason[client] = Reason;
@@ -282,8 +280,7 @@ public partial class Plugin
                 }
                 else
                 {
-                    TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
-                    timeRemainingFormatted = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                    timeRemainingFormatted = Database.FormatTimeRemainingFromSeconds(secondsRemaining);
                 }
             }
 
@@ -401,8 +398,7 @@ public partial class Plugin
                 }
                 else
                 {
-                    TimeSpan timeRemaining = TimeSpan.FromSeconds(BanDuration);
-                    remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                    remaining[client] = Database.FormatTimeRemainingFromSeconds(BanDuration);
                 }
 
                 reason[client] = Reason;
@@ -458,8 +454,7 @@ public partial class Plugin
                     }
                     else
                     {
-                        TimeSpan timeRemaining = TimeSpan.FromSeconds(BanDuration);
-                        remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                        remaining[client] = Database.FormatTimeRemainingFromSeconds(BanDuration);
                     }
 
                     reason[client] = Reason;
@@ -569,8 +564,7 @@ public partial class Plugin
                 }
                 else
                 {
-                    TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
-                    timeRemainingFormatted = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                    timeRemainingFormatted = Database.FormatTimeRemainingFromSeconds(secondsRemaining);
                 }
             }
 

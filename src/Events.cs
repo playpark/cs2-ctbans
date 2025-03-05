@@ -186,8 +186,7 @@ public partial class Plugin
                         if (banDuration > 0) // Not a permanent ban
                         {
                             int secondsRemaining = banDuration - timeServed[client]!.Value;
-                            TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
-                            remaining[client] = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                            remaining[client] = Database.FormatTimeRemainingFromSeconds(secondsRemaining);
                         }
                     }
 

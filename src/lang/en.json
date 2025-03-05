@@ -17,5 +17,5 @@
   "ban_info_2": "{white}SteamID: {red}{0}{white} is {red}banned",
   "ban_info_3": "{white}Time remaining: {red}{0}",
   "ban_info_4": "{white}Reason: {red}{0}{white}",
-  "banned": "You are {red}banned{default} from {blue}CT{white}! {default}Time remaining: {red}{0}"
+  "banned": "You are {red}banned{default} from {blue}CT{default}! Time remaining: {red}{0}"
 }

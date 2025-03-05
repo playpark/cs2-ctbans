@@ -1,5 +1,6 @@
 ﻿using CounterStrikeSharp.API.Core;
 using Nexd.MySQL;
+using System;
 
 public class Database
 {
@@ -13,6 +14,37 @@ public class Database
     private static MySqlDb ConnectionString()
     {
         return new MySqlDb(host, username, password, name, port);
+    }
+
+    // Helper method to format time remaining in a concise way
+    public static string FormatTimeRemaining(TimeSpan timeRemaining)
+    {
+        if (timeRemaining.Days > 0)
+        {
+            return $"{timeRemaining.Days}d {timeRemaining.Hours}h";
+        }
+        else if (timeRemaining.Hours > 0)
+        {
+            return $"{timeRemaining.Hours}h {timeRemaining.Minutes}m";
+        }
+        else if (timeRemaining.Minutes > 0)
+        {
+            return $"{timeRemaining.Minutes}m {timeRemaining.Seconds}s";
+        }
+        else
+        {
+            return $"{timeRemaining.Seconds}s";
+        }
+    }
+
+    // Helper method to format time remaining from seconds
+    public static string FormatTimeRemainingFromSeconds(int secondsRemaining)
+    {
+        if (secondsRemaining <= 0)
+            return "0s";
+
+        TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
+        return FormatTimeRemaining(timeRemaining);
     }
 
     public static void Load()
@@ -167,8 +199,7 @@ public class Database
             {
                 // Still banned
                 int secondsRemaining = banDuration - timeServed;
-                TimeSpan timeRemaining = TimeSpan.FromSeconds(secondsRemaining);
-                string timeRemainingFormatted = $"{timeRemaining.Days}d {timeRemaining.Hours}:{timeRemaining.Minutes:D2}:{timeRemaining.Seconds:D2}";
+                string timeRemainingFormatted = FormatTimeRemainingFromSeconds(secondsRemaining);
 
                 Plugin.banned[client] = true;
                 Plugin.remaining[client] = timeRemainingFormatted;
