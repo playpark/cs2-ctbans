@@ -1,80 +1,93 @@
-> [!NOTE]
-> * permission in config is now being used for cmds
-> * new config setting for own dbtable name
-> * color support in config tag
-> * changed database table structure + added player name, admin name & time added
-> * cleaned up code and fixed grammar stuff
-> * ban time is now in minutes instead of hours
-> * expired bans wont disappear from database
-> * added localizers 
-> * custom command triggers
-> * read commits for other changes
+# CTBans
+Often used with [Jailbreak](https://github.com/playpark/cs2-jailbreak)
 
-<br>
-
-> [!IMPORTANT]
-> FORK FROM [DeadSwimek/cs2-ctban](https://github.com/DeadSwimek/cs2-ctban)
-
-<img src="https://github.com/user-attachments/assets/53e486cc-8da4-45ab-bc6e-eb38145aba36" height="200px"> <br>
-
-<br> <a href="https://ko-fi.com/exkludera" target="blank"><img src="https://cdn.ko-fi.com/cdn/kofi5.png" height="48px" alt="Buy Me a Coffee at ko-fi.com"></a>
-
-## old readme from main below
---------------------------------------------
-
-# TBans
-[CLICK TO ALTERNATIVE T BANS](https://github.com/DeadSwimek/cs2-tban)
-
-##### Lists of my plugins
-> [VIP](https://github.com/DeadSwimek/cs2-vip), [VIP Premium](https://github.com/DeadSwimek/cs2-vip-premium), [SpecialRounds](https://github.com/DeadSwimek/cs2-specialrounds), [Countdown](https://github.com/DeadSwimek/cs2-countdown), [CTBans](https://github.com/DeadSwimek/cs2-ctban), [HideAdmin](https://github.com/DeadSwimek/cs2-hideadmin)
-
-> If you wanna you can support me on this link - **https://www.paypal.com/paypalme/deadswim**
-
-### Features
-
-- Can banning player to connect in CT Team
-- Can unbanning player to connect in CT Team
-- Session banning the player
-- Database maked
-- Can make banlist
+![CS2](https://img.shields.io/badge/Game-CS2-orange)
+![CounterStrikeSharp](https://img.shields.io/badge/API-CounterStrikeSharp-blue)
 
 
-# Donators
-***GreeNyTM*** Value **200 CZK**
+## Features
 
-# Commands
-**css_ctban**
+- Ban players from joining the CT team for a specified duration
+- Offline banning capability
+- Ban tracking with time served (only counts time when player is alive)
+- Admin commands for managing bans
+- Player commands to check ban status
+- HUD notifications for banned players
+- Multi-language support
+- API for other plugins to integrate with
 
-`Usage: /ctban <SteamID/PLAYERNAME> <Hours> 'REASON'`
+## Configuration
 
-**css_unctban**
+The plugin configuration file is located at `configs/plugins/CTBans/CTBans.json`. Here's an example configuration:
 
-`Usage: /unctban <SteamID>`
-
-**css_isctbanned**
-
-`Usage: /isctbanned <SteamID>`
-
-**css_ctsessionban**
-
-`Usage: /ctsessionban <PLAYERNAME> <REASON>`
-
-| Command      | Permission   |
-| ------------ | ------------ |
-| `css_ctban`    | @css/ban     |
-| `css_unctban`    | @css/ban     |
-#Config
-
-```JSON
+```json
 {
-  "Prefix": " \u0001[\u0004MadGames.eu\u0001]",
-  "permission": "@css/reservation",
-  "DBDatabase": "database",
-  "DBUser": "user",
-  "DBPassword": "password",
-  "DBHost": "localhost",
-  "DBPort": 3306,
-  "ConfigVersion": 1
+  "ConfigVersion": 2,
+  "Debug": false,
+  "Database": {
+    "Table": "ctbans",
+    "Host": "localhost",
+    "Username": "user",
+    "Password": "password",
+    "Name": "database",
+    "Port": 3306
+  },
+  "Commands": {
+    "Permission": "@css/ban",
+    "CTBan": "ctban,banct",
+    "CTUnban": "ctunban,unctban,unbanct",
+    "CTBanInfo": "ctbaninfo,infoctban,ctbancheck,checkctban,isctban,isctbanned",
+    "AddCTBan": "addctban,offlinebanct"
+  },
+  "TeamDenySound": "sounds/ui/counter_beep.vsnd"
 }
 ```
+
+### Configuration Options
+
+- `ConfigVersion`: Current configuration version (do not change)
+- `Debug`: Enable debug mode for troubleshooting
+- `Database`: MySQL database connection settings
+  - `Table`: Database table name for storing bans
+  - `Host`: MySQL server hostname
+  - `Username`: MySQL username
+  - `Password`: MySQL password
+  - `Name`: Database name
+  - `Port`: MySQL server port
+- `Commands`: Command aliases configuration
+  - `Permission`: Permission flag required to use admin commands
+  - `CTBan`: Command aliases for banning players
+  - `CTUnban`: Command aliases for unbanning players
+  - `CTBanInfo`: Command aliases for checking ban information
+  - `AddCTBan`: Command aliases for offline banning
+- `TeamDenySound`: Sound played when a banned player attempts to join CT
+
+## Commands
+
+### Admin Commands
+
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `css_ctban` | Ban a player from CT side | `css_ctban <name/steamid> <duration in minutes> <reason>` |
+| `css_ctunban` | Unban a player from CT side | `css_ctunban <name/steamid>` |
+| `css_ctbaninfo` | Check a player's CT ban info | `css_ctbaninfo <name/steamid>` |
+| `css_addctban` | Ban an offline player from CT side | `css_addctban <steamid> <name> <duration in minutes> <reason>` |
+
+### Player Commands
+
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `css_checkban` | Check your own or another player's CT ban status | `css_checkban [name/steamid]` |
+
+
+## Localization
+
+The plugin supports multiple languages. Language files are located in the `lang` directory. To add a new language, create a new JSON file with the language code (e.g., `fr.json`) and translate the strings from the `en.json` file.
+
+## Credits
+
+- Original author: DeadSwim
+- Continued by: exkludera
+- Current maintainer: dollan
+
 
