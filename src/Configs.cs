@@ -1,8 +1,9 @@
+using System.Text.Json.Serialization;
 using CounterStrikeSharp.API.Core;
 
 public class Config : BasePluginConfig
 {
-    public int ConfigVersion { get; set; } = 2;
+    [JsonPropertyName("ConfigVersion")] public override int Version { get; set; } = 2;
     public bool Debug { get; set; } = false;
     public Config_Database Database { get; set; } = new Config_Database();
     public Config_Commands Commands { get; set; } = new Config_Commands();

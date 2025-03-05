@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Capabilities;
-using CounterStrikeSharp.API.Modules.Utils;
 using CTBans.Shared;
 
 public partial class Plugin : BasePlugin, IPluginConfig<Config>
